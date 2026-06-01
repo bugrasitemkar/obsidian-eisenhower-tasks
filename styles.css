@@ -212,6 +212,18 @@
 	color: var(--text-normal);
 	line-height: 1.4;
 	word-break: break-word;
+	flex: 1;
+	cursor: text;
+}
+
+.eisenhower-task-edit-input {
+	flex: 1;
+	font-size: var(--font-ui-small);
+	padding: 1px 4px;
+	border: 1px solid var(--interactive-accent);
+	border-radius: var(--radius-s);
+	background: var(--background-primary);
+	color: var(--text-normal);
 }
 
 /* ── Add Task row (bottom of quadrant) ── */
