@@ -194,7 +194,10 @@ export class EisenhowerView extends ItemView {
 			this.refresh();
 		};
 
-		input.addEventListener('blur', () => void commit());
+		input.addEventListener('blur', () => {
+			if (document.querySelector('.eisenhower-date-picker-popup')) return;
+			void commit();
+		});
 		input.addEventListener('keydown', (e: KeyboardEvent) => {
 			if (e.key === 'Enter') { e.preventDefault(); void commit(); }
 			if (e.key === 'Escape') { e.preventDefault(); cancel(); }
@@ -238,32 +241,34 @@ export class EisenhowerView extends ItemView {
 		const dateInput = popup.createEl('input', { type: 'date' });
 
 		const rect = targetInput.getBoundingClientRect();
-		popup.style.top = `${rect.bottom + window.scrollY + 4}px`;
-		popup.style.left = `${rect.left + window.scrollX}px`;
+		popup.style.top = `${rect.bottom + 4}px`;
+		popup.style.left = `${rect.left}px`;
 
 		const insert = (value: string) => {
 			const cur = targetInput.value;
-			// Replace trailing @ if just typed, append the date tag
 			const base = cur.endsWith('@') ? cur.slice(0, -1) : cur;
 			targetInput.value = `${base.trimEnd()} @${value}`.trimStart();
 			popup.remove();
 			targetInput.focus();
 		};
 
-		dateInput.addEventListener('change', () => { if (dateInput.value) insert(dateInput.value); });
+		dateInput.addEventListener('change', () => {
+			if (dateInput.value) insert(dateInput.value);
+		});
+
 		dateInput.addEventListener('keydown', (e: KeyboardEvent) => {
 			if (e.key === 'Escape') { popup.remove(); targetInput.focus(); }
 		});
 
-		const close = (e: MouseEvent) => {
-			if (!popup.contains(e.target as Node)) { popup.remove(); document.removeEventListener('mousedown', close); }
-		};
-		document.addEventListener('mousedown', close);
+		// Close when focus leaves the popup (but not to native picker)
+		dateInput.addEventListener('blur', () => {
+			setTimeout(() => {
+				if (!popup.isConnected) return;
+				if (!popup.contains(document.activeElement)) popup.remove();
+			}, 300);
+		});
 
-		setTimeout(() => {
-			dateInput.focus();
-			try { dateInput.showPicker(); } catch { dateInput.click(); }
-		}, 10);
+		setTimeout(() => dateInput.focus(), 10);
 	}
 
 	private renderAddSectionRow(parent: HTMLElement, quadrant: QuadrantKey): void {
