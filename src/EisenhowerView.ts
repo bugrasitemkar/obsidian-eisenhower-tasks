@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf, setIcon } from 'obsidian';
+import { ItemView, WorkspaceLeaf, setIcon, FuzzySuggestModal, TFile } from 'obsidian';
 import { QUADRANT_KEYS, QUADRANT_LABELS, UNCATEGORIZED, type QuadrantKey, type SectionDef, type Task } from './types';
 import { TaskManager } from './TaskManager';
 
@@ -205,6 +205,7 @@ export class EisenhowerView extends ItemView {
 		});
 		input.addEventListener('input', () => {
 			if (input.value.endsWith('@')) { this.showDatePicker(input); }
+			if (input.value.endsWith('[[')) { this.showFilePicker(input); }
 		});
 	}
 
@@ -260,6 +261,7 @@ export class EisenhowerView extends ItemView {
 		});
 		input.addEventListener('input', () => {
 			if (input.value.endsWith('@')) { this.showDatePicker(input); }
+			if (input.value.endsWith('[[')) { this.showFilePicker(input); }
 		});
 	}
 
@@ -325,6 +327,16 @@ export class EisenhowerView extends ItemView {
 		});
 	}
 
+	private showFilePicker(targetInput: HTMLInputElement): void {
+		new FileLinkModal(this.app, (file: TFile) => {
+			const cur = targetInput.value;
+			const base = cur.endsWith('[[') ? cur.slice(0, -2) : cur;
+			const linkPath = file.path.endsWith('.md') ? file.path.slice(0, -3) : file.path;
+			targetInput.value = `${base}[[${linkPath}]]`;
+			targetInput.focus();
+		}).open();
+	}
+
 	private startInlineRename(
 		headerRow: HTMLElement,
 		nameSpan: HTMLElement,
@@ -365,5 +377,28 @@ export class EisenhowerView extends ItemView {
 			if (e.key === 'Enter') { e.preventDefault(); void commit(); }
 			if (e.key === 'Escape') { e.preventDefault(); cancel(); }
 		});
+	}
+}
+
+class FileLinkModal extends FuzzySuggestModal<TFile> {
+	private onChoose: (file: TFile) => void;
+
+	constructor(app: import('obsidian').App, onChoose: (file: TFile) => void) {
+		super(app);
+		this.onChoose = onChoose;
+		this.setPlaceholder('Search notes to link…');
+	}
+
+	getItems(): TFile[] {
+		return this.app.vault.getMarkdownFiles()
+			.sort((a, b) => a.path.localeCompare(b.path));
+	}
+
+	getItemText(file: TFile): string {
+		return file.path;
+	}
+
+	onChooseItem(file: TFile): void {
+		this.onChoose(file);
 	}
 }
