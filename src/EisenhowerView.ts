@@ -142,7 +142,14 @@ export class EisenhowerView extends ItemView {
 
 		const checkbox = taskEl.createEl('input', { type: 'checkbox', cls: 'eisenhower-task-checkbox' });
 		checkbox.checked = false;
-		taskEl.createEl('span', { cls: 'eisenhower-task-text', text: task.text });
+
+		const textRow = taskEl.createDiv({ cls: 'eisenhower-task-body' });
+		textRow.createEl('span', { cls: 'eisenhower-task-text', text: task.text });
+
+		const date = this.taskManager.extractDate(task.text);
+		if (date) {
+			textRow.createEl('span', { cls: 'eisenhower-task-date', text: date });
+		}
 
 		checkbox.addEventListener('change', async () => {
 			if (checkbox.checked) {

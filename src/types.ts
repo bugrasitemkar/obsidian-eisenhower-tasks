@@ -27,10 +27,20 @@ export interface SectionDef {
 
 export interface PluginSettings {
 	autoTagOnMove: boolean;
+	useDefaultSections: boolean;
+	fullCalendarIntegration: boolean;
+	fullCalendarFolder: string;
+	personalCalendarFolder: string;
+	workCalendarFolder: string;
 }
 
 export const DEFAULT_SETTINGS: PluginSettings = {
 	autoTagOnMove: false,
+	useDefaultSections: false,
+	fullCalendarIntegration: false,
+	fullCalendarFolder: 'Calendar/Eisenhower',
+	personalCalendarFolder: 'Calendar/Personal',
+	workCalendarFolder: 'Calendar/Work',
 };
 
 export interface PluginData {

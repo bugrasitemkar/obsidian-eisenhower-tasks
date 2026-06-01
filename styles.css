@@ -207,11 +207,24 @@
 	cursor: pointer;
 }
 
+.eisenhower-task-body {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	min-width: 0;
+}
+
 .eisenhower-task-text {
 	font-size: var(--font-ui-small);
 	color: var(--text-normal);
 	line-height: 1.4;
 	word-break: break-word;
+}
+
+.eisenhower-task-date {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-accent);
+	margin-top: 1px;
 }
 
 /* ── Add Task row (bottom of quadrant) ── */

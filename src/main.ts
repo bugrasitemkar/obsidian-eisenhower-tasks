@@ -33,6 +33,9 @@ export default class EisenhowerTasksPlugin extends Plugin {
 		);
 
 		this.addSettingTab(new EisenhowerSettingTab(this.app, this));
+
+		// Sync any pre-existing dated tasks on load
+		void this.taskManager.syncAllCalendarEvents();
 	}
 
 	async onunload(): Promise<void> {
@@ -76,5 +79,103 @@ class EisenhowerSettingTab extends PluginSettingTab {
 						await this.plugin.taskManager.save();
 					})
 			);
+
+		new Setting(containerEl)
+			.setName('Personal & Work sections')
+			.setDesc('Add "Personal" and "Work" sections to every quadrant automatically.')
+			.addToggle(toggle =>
+				toggle
+					.setValue(this.plugin.taskManager.data.settings.useDefaultSections)
+					.onChange(async (value) => {
+						this.plugin.taskManager.data.settings.useDefaultSections = value;
+						await this.plugin.taskManager.save();
+						if (value) await this.plugin.taskManager.enableDefaultSections();
+						this.plugin.app.workspace.getLeavesOfType('eisenhower-tasks-view')
+							.forEach(l => (l.view as { render?: () => void }).render?.());
+					})
+			);
+
+		containerEl.createEl('h3', { text: 'Full Calendar Integration' });
+
+		new Setting(containerEl)
+			.setName('Enable Full Calendar sync')
+			.setDesc('Tasks tagged with @YYYY-MM-DD appear as events in the Full Calendar plugin.')
+			.addToggle(toggle =>
+				toggle
+					.setValue(this.plugin.taskManager.data.settings.fullCalendarIntegration)
+					.onChange(async (value) => {
+						this.plugin.taskManager.data.settings.fullCalendarIntegration = value;
+						await this.plugin.taskManager.save();
+						await this.plugin.taskManager.syncAllCalendarEvents();
+					})
+			);
+
+		const folders = this.getFolderList();
+
+		this.addFolderSetting(
+			containerEl, folders,
+			'Personal section folder',
+			'Calendar folder for tasks in the "Personal" section.',
+			'personalCalendarFolder',
+			'Calendar/Personal',
+		);
+
+		this.addFolderSetting(
+			containerEl, folders,
+			'Work section folder',
+			'Calendar folder for tasks in the "Work" section.',
+			'workCalendarFolder',
+			'Calendar/Work',
+		);
+
+		this.addFolderSetting(
+			containerEl, folders,
+			'Other sections folder',
+			'Fallback calendar folder for tasks in any other section.',
+			'fullCalendarFolder',
+			'Calendar/Eisenhower',
+		);
+	}
+
+	private getFolderList(): string[] {
+		const folders: string[] = ['/'];
+		this.app.vault.getAllFolders().forEach(f => folders.push(f.path));
+		return folders.sort();
+	}
+
+	private addFolderSetting(
+		container: HTMLElement,
+		folders: string[],
+		name: string,
+		desc: string,
+		key: 'personalCalendarFolder' | 'workCalendarFolder' | 'fullCalendarFolder',
+		placeholder: string,
+	): void {
+		const settings = this.plugin.taskManager.data.settings;
+		const current = settings[key] || placeholder;
+
+		const setting = new Setting(container).setName(name).setDesc(desc);
+
+		if (folders.length > 1) {
+			setting.addDropdown(drop => {
+				// Add current value even if folder doesn't exist yet
+				const allOptions = folders.includes(current) ? folders : [current, ...folders];
+				for (const f of allOptions) {
+					drop.addOption(f, f);
+				}
+				drop.setValue(current);
+				drop.onChange(async (value) => {
+					settings[key] = value;
+					await this.plugin.taskManager.save();
+				});
+			});
+		} else {
+			setting.addText(text =>
+				text.setPlaceholder(placeholder).setValue(current).onChange(async (value) => {
+					settings[key] = value.trim() || placeholder;
+					await this.plugin.taskManager.save();
+				})
+			);
+		}
 	}
 }
