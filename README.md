@@ -2,6 +2,8 @@
 
 An [Obsidian](https://obsidian.md) plugin that brings the Eisenhower Matrix to your vault — a proven prioritization framework that divides tasks into four quadrants by urgency and importance.
 
+ 👉 https://community.obsidian.md/plugins/eisenhower-tasks
+
 ---
 
 ## Screenshot
