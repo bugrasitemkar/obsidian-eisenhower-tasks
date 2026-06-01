@@ -221,7 +221,9 @@ export class EisenhowerView extends ItemView {
 		addBtn.addEventListener('click', submit);
 		input.addEventListener('keydown', (e: KeyboardEvent) => {
 			if (e.key === 'Enter') { e.preventDefault(); void submit(); }
-			if (e.key === '@') { this.showDatePicker(input); }
+		});
+		input.addEventListener('input', () => {
+			if (input.value.endsWith('@')) { this.showDatePicker(input); }
 		});
 	}
 
@@ -255,8 +257,10 @@ export class EisenhowerView extends ItemView {
 		};
 		document.addEventListener('mousedown', close);
 
-		// Open the native date picker
-		setTimeout(() => { dateInput.focus(); dateInput.showPicker?.(); }, 10);
+		setTimeout(() => {
+			dateInput.focus();
+			try { dateInput.showPicker(); } catch { dateInput.click(); }
+		}, 10);
 	}
 
 	private renderAddSectionRow(parent: HTMLElement, quadrant: QuadrantKey): void {
