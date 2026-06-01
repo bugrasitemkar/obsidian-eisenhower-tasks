@@ -144,7 +144,8 @@ export class EisenhowerView extends ItemView {
 		checkbox.checked = false;
 
 		const textRow = taskEl.createDiv({ cls: 'eisenhower-task-body' });
-		const textSpan = textRow.createEl('span', { cls: 'eisenhower-task-text', text: task.text });
+		const textSpan = textRow.createEl('span', { cls: 'eisenhower-task-text' });
+		this.renderTaskText(textSpan, task.text);
 
 		const date = this.taskManager.extractDate(task.text);
 		if (date) {
@@ -205,6 +206,35 @@ export class EisenhowerView extends ItemView {
 		input.addEventListener('input', () => {
 			if (input.value.endsWith('@')) { this.showDatePicker(input); }
 		});
+	}
+
+	private renderTaskText(container: HTMLElement, text: string): void {
+		const wikiLinkRegex = /\[\[([^\]]+)\]\]/g;
+		let lastIndex = 0;
+		let match;
+		while ((match = wikiLinkRegex.exec(text)) !== null) {
+			if (match.index > lastIndex) {
+				container.appendText(text.slice(lastIndex, match.index));
+			}
+			const inner = match[1];
+			const pipeIdx = inner.indexOf('|');
+			const target = pipeIdx >= 0 ? inner.slice(0, pipeIdx) : inner;
+			const display = pipeIdx >= 0 ? inner.slice(pipeIdx + 1) : inner;
+			const link = container.createEl('a', {
+				cls: 'eisenhower-wiki-link internal-link',
+				text: display,
+				attr: { 'data-href': target, href: target },
+			});
+			link.addEventListener('click', (e: MouseEvent) => {
+				e.preventDefault();
+				e.stopPropagation();
+				this.app.workspace.openLinkText(target, '', false);
+			});
+			lastIndex = match.index + match[0].length;
+		}
+		if (lastIndex < text.length) {
+			container.appendText(text.slice(lastIndex));
+		}
 	}
 
 	// Single add-task button per quadrant → adds to Uncategorized

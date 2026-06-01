@@ -223,6 +223,15 @@
 	cursor: text;
 }
 
+.eisenhower-task-text .eisenhower-wiki-link {
+	color: var(--link-color);
+	text-decoration: none;
+	cursor: pointer;
+}
+.eisenhower-task-text .eisenhower-wiki-link:hover {
+	text-decoration: underline;
+}
+
 .eisenhower-task-edit-input {
 	flex: 1;
 	font-size: var(--font-ui-small);
