@@ -25,10 +25,19 @@ export interface SectionDef {
 	name: string;
 }
 
+export interface PluginSettings {
+	autoTagOnMove: boolean;
+}
+
+export const DEFAULT_SETTINGS: PluginSettings = {
+	autoTagOnMove: false,
+};
+
 export interface PluginData {
 	tasks: Task[];
 	sections: Record<QuadrantKey, SectionDef[]>;
 	archiveFile: string;
+	settings: PluginSettings;
 }
 
 export const DEFAULT_DATA: PluginData = {
@@ -40,4 +49,5 @@ export const DEFAULT_DATA: PluginData = {
 		q4: [{ id: 'default-q4', name: UNCATEGORIZED }],
 	},
 	archiveFile: 'Eisenhower Archive.md',
+	settings: { ...DEFAULT_SETTINGS },
 };

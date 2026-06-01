@@ -29,16 +29,16 @@ export class TaskManager {
 		this.data = {
 			tasks: saved.tasks ?? [],
 			archiveFile: saved.archiveFile ?? DEFAULT_DATA.archiveFile,
+			settings: { ...DEFAULT_DATA.settings, ...(saved.settings ?? {}) },
 			sections: {} as PluginData['sections'],
 		};
 		for (const key of QUADRANT_KEYS) {
-			const saved_sections = saved.sections?.[key];
-			if (saved_sections && saved_sections.length > 0) {
-				// Ensure Uncategorized always exists as first entry
-				const hasUncategorized = saved_sections.some(s => s.name === UNCATEGORIZED);
+			const savedSections = saved.sections?.[key];
+			if (savedSections && savedSections.length > 0) {
+				const hasUncategorized = savedSections.some(s => s.name === UNCATEGORIZED);
 				this.data.sections[key] = hasUncategorized
-					? saved_sections
-					: [{ id: `default-${key}`, name: UNCATEGORIZED }, ...saved_sections];
+					? savedSections
+					: [{ id: `default-${key}`, name: UNCATEGORIZED }, ...savedSections];
 			} else {
 				this.data.sections[key] = [{ id: `default-${key}`, name: UNCATEGORIZED }];
 			}
@@ -61,6 +61,30 @@ export class TaskManager {
 		this.data.tasks.push(task);
 		await this.save();
 		return task;
+	}
+
+	async moveTask(taskId: string, newQuadrant: QuadrantKey, newSection: string): Promise<void> {
+		const task = this.data.tasks.find(t => t.id === taskId);
+		if (!task) return;
+		const sameLocation = task.quadrant === newQuadrant && task.section === newSection;
+		if (sameLocation) return;
+
+		const oldSection = task.section;
+		task.quadrant = newQuadrant;
+		task.section = newSection;
+
+		if (
+			this.data.settings.autoTagOnMove &&
+			newSection !== UNCATEGORIZED &&
+			newSection !== oldSection
+		) {
+			const tag = `#${newSection.toLowerCase().replace(/\s+/g, '-')}`;
+			if (!task.text.includes(tag)) {
+				task.text = `${task.text} ${tag}`;
+			}
+		}
+
+		await this.save();
 	}
 
 	async completeTask(id: string): Promise<void> {
@@ -143,7 +167,6 @@ export class TaskManager {
 			if (bucket) {
 				bucket.push(task);
 			} else {
-				// Section was deleted but task wasn't migrated — fallback
 				const fallback = map.get(UNCATEGORIZED);
 				if (fallback) fallback.push(task);
 			}

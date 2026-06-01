@@ -4,33 +4,23 @@ import { TaskManager } from './TaskManager';
 
 export const VIEW_TYPE_EISENHOWER = 'eisenhower-tasks-view';
 
+const DRAG_TASK_ID_KEY = 'eisenhower-task-id';
+
 export class EisenhowerView extends ItemView {
 	private taskManager: TaskManager;
+	private fullscreenQuadrant: QuadrantKey | null = null;
 
 	constructor(leaf: WorkspaceLeaf, taskManager: TaskManager) {
 		super(leaf);
 		this.taskManager = taskManager;
 	}
 
-	getViewType(): string {
-		return VIEW_TYPE_EISENHOWER;
-	}
+	getViewType(): string { return VIEW_TYPE_EISENHOWER; }
+	getDisplayText(): string { return 'Eisenhower Tasks'; }
+	getIcon(): string { return 'layout-grid'; }
 
-	getDisplayText(): string {
-		return 'Eisenhower Tasks';
-	}
-
-	getIcon(): string {
-		return 'layout-grid';
-	}
-
-	async onOpen(): Promise<void> {
-		this.render();
-	}
-
-	async onClose(): Promise<void> {
-		// nothing to clean up
-	}
+	async onOpen(): Promise<void> { this.render(); }
+	async onClose(): Promise<void> { /* nothing */ }
 
 	private render(): void {
 		const { contentEl } = this;
@@ -38,35 +28,49 @@ export class EisenhowerView extends ItemView {
 		contentEl.addClass('eisenhower-view');
 
 		const grid = contentEl.createDiv({ cls: 'eisenhower-grid' });
+		if (this.fullscreenQuadrant) grid.addClass('has-fullscreen');
 
 		for (const key of QUADRANT_KEYS) {
 			this.renderQuadrant(grid, key);
 		}
 	}
 
-	private refresh(): void {
-		this.render();
-	}
+	private refresh(): void { this.render(); }
 
 	private renderQuadrant(parent: HTMLElement, key: QuadrantKey): void {
 		const labels = QUADRANT_LABELS[key];
 		const quadrantEl = parent.createDiv({ cls: `eisenhower-quadrant eisenhower-${key}` });
+		if (this.fullscreenQuadrant === key) quadrantEl.addClass('is-fullscreen');
 
+		// ── Header ──
 		const header = quadrantEl.createDiv({ cls: 'eisenhower-quadrant-header' });
-		header.createEl('div', { cls: 'eisenhower-quadrant-title', text: labels.title });
-		header.createEl('div', { cls: 'eisenhower-quadrant-subtitle', text: labels.subtitle });
+		const headerText = header.createDiv({ cls: 'eisenhower-quadrant-header-text' });
+		headerText.createEl('div', { cls: 'eisenhower-quadrant-title', text: labels.title });
+		headerText.createEl('div', { cls: 'eisenhower-quadrant-subtitle', text: labels.subtitle });
 
+		const expandBtn = header.createEl('button', {
+			cls: 'eisenhower-icon-btn',
+			attr: { 'aria-label': this.fullscreenQuadrant === key ? 'Exit fullscreen' : 'Fullscreen' },
+		});
+		setIcon(expandBtn, this.fullscreenQuadrant === key ? 'minimize-2' : 'maximize-2');
+		expandBtn.addEventListener('click', () => {
+			this.fullscreenQuadrant = this.fullscreenQuadrant === key ? null : key;
+			this.refresh();
+		});
+
+		// ── Add Section row (just below header) ──
+		this.renderAddSectionRow(quadrantEl, key);
+
+		// ── Scrollable sections ──
 		const sectionsContainer = quadrantEl.createDiv({ cls: 'eisenhower-sections-container' });
-
 		const tasksBySection = this.taskManager.getTasksBySection(key);
-		const sections = this.taskManager.data.sections[key];
-
-		for (const section of sections) {
+		for (const section of this.taskManager.data.sections[key]) {
 			const tasks = tasksBySection.get(section.name) ?? [];
 			this.renderSection(sectionsContainer, key, section, tasks);
 		}
 
-		this.renderAddSectionRow(quadrantEl, key);
+		// ── Single Add Task row at bottom ──
+		this.renderAddTaskRow(quadrantEl, key);
 	}
 
 	private renderSection(
@@ -82,13 +86,19 @@ export class EisenhowerView extends ItemView {
 		const nameSpan = headerRow.createEl('span', { cls: 'eisenhower-section-name', text: section.name });
 
 		if (!isDefault) {
-			const renameBtn = headerRow.createEl('button', { cls: 'eisenhower-icon-btn', attr: { 'aria-label': 'Rename section' } });
+			const renameBtn = headerRow.createEl('button', {
+				cls: 'eisenhower-icon-btn',
+				attr: { 'aria-label': 'Rename section' },
+			});
 			setIcon(renameBtn, 'pencil');
 			renameBtn.addEventListener('click', () => {
 				this.startInlineRename(headerRow, nameSpan, quadrant, section);
 			});
 
-			const deleteBtn = headerRow.createEl('button', { cls: 'eisenhower-icon-btn eisenhower-delete-btn', attr: { 'aria-label': 'Delete section' } });
+			const deleteBtn = headerRow.createEl('button', {
+				cls: 'eisenhower-icon-btn eisenhower-delete-btn',
+				attr: { 'aria-label': 'Delete section' },
+			});
 			setIcon(deleteBtn, 'trash-2');
 			deleteBtn.addEventListener('click', async () => {
 				await this.taskManager.deleteSection(quadrant, section.id);
@@ -96,16 +106,40 @@ export class EisenhowerView extends ItemView {
 			});
 		}
 
+		// ── Task list / drop zone ──
 		const taskList = sectionEl.createDiv({ cls: 'eisenhower-task-list' });
+		taskList.dataset['quadrant'] = quadrant;
+		taskList.dataset['section'] = section.name;
+
+		taskList.addEventListener('dragover', (e: DragEvent) => {
+			e.preventDefault();
+			taskList.addClass('drag-over');
+		});
+		taskList.addEventListener('dragleave', () => taskList.removeClass('drag-over'));
+		taskList.addEventListener('drop', async (e: DragEvent) => {
+			e.preventDefault();
+			taskList.removeClass('drag-over');
+			const taskId = e.dataTransfer?.getData(DRAG_TASK_ID_KEY);
+			if (!taskId) return;
+			await this.taskManager.moveTask(taskId, quadrant, section.name);
+			this.refresh();
+		});
+
 		for (const task of tasks) {
 			this.renderTask(taskList, task);
 		}
-
-		this.renderAddTaskRow(sectionEl, quadrant, section.name);
 	}
 
 	private renderTask(parent: HTMLElement, task: Task): void {
-		const taskEl = parent.createDiv({ cls: 'eisenhower-task' });
+		const taskEl = parent.createDiv({ cls: 'eisenhower-task', attr: { draggable: 'true' } });
+
+		taskEl.addEventListener('dragstart', (e: DragEvent) => {
+			e.dataTransfer?.setData(DRAG_TASK_ID_KEY, task.id);
+			if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+			taskEl.addClass('is-dragging');
+		});
+		taskEl.addEventListener('dragend', () => taskEl.removeClass('is-dragging'));
+
 		const checkbox = taskEl.createEl('input', { type: 'checkbox', cls: 'eisenhower-task-checkbox' });
 		checkbox.checked = false;
 		taskEl.createEl('span', { cls: 'eisenhower-task-text', text: task.text });
@@ -118,15 +152,20 @@ export class EisenhowerView extends ItemView {
 		});
 	}
 
-	private renderAddTaskRow(parent: HTMLElement, quadrant: QuadrantKey, sectionName: string): void {
+	// Single add-task button per quadrant → adds to Uncategorized
+	private renderAddTaskRow(parent: HTMLElement, quadrant: QuadrantKey): void {
 		const row = parent.createDiv({ cls: 'eisenhower-add-task' });
-		const input = row.createEl('input', { type: 'text', cls: 'eisenhower-add-task-input', placeholder: 'Add task…' });
-		const addBtn = row.createEl('button', { cls: 'eisenhower-add-btn', text: 'Add' });
+		const input = row.createEl('input', {
+			type: 'text',
+			cls: 'eisenhower-add-task-input',
+			placeholder: 'Add task to Uncategorized…',
+		});
+		const addBtn = row.createEl('button', { cls: 'eisenhower-add-btn', text: 'Add Task' });
 
 		const submit = async () => {
 			const text = input.value.trim();
 			if (!text) return;
-			await this.taskManager.addTask(quadrant, sectionName, text);
+			await this.taskManager.addTask(quadrant, UNCATEGORIZED, text);
 			this.refresh();
 		};
 
@@ -138,7 +177,11 @@ export class EisenhowerView extends ItemView {
 
 	private renderAddSectionRow(parent: HTMLElement, quadrant: QuadrantKey): void {
 		const row = parent.createDiv({ cls: 'eisenhower-add-section' });
-		const input = row.createEl('input', { type: 'text', cls: 'eisenhower-add-section-input', placeholder: 'New section name…' });
+		const input = row.createEl('input', {
+			type: 'text',
+			cls: 'eisenhower-add-section-input',
+			placeholder: 'New section name…',
+		});
 		const addBtn = row.createEl('button', { cls: 'eisenhower-add-btn', text: 'Add Section' });
 
 		const submit = async () => {
@@ -173,7 +216,11 @@ export class EisenhowerView extends ItemView {
 		input.focus();
 		input.select();
 
+		let committed = false;
+
 		const commit = async () => {
+			if (committed) return;
+			committed = true;
 			const newName = input.value.trim();
 			if (newName && newName !== originalName) {
 				await this.taskManager.renameSection(quadrant, section.id, newName);
@@ -182,13 +229,15 @@ export class EisenhowerView extends ItemView {
 		};
 
 		const cancel = () => {
+			if (committed) return;
+			committed = true;
 			this.refresh();
 		};
 
 		input.addEventListener('blur', () => void commit());
 		input.addEventListener('keydown', (e: KeyboardEvent) => {
-			if (e.key === 'Enter') { e.preventDefault(); input.removeEventListener('blur', () => void commit()); void commit(); }
-			if (e.key === 'Escape') { e.preventDefault(); input.removeEventListener('blur', () => void commit()); cancel(); }
+			if (e.key === 'Enter') { e.preventDefault(); void commit(); }
+			if (e.key === 'Escape') { e.preventDefault(); cancel(); }
 		});
 	}
 }
