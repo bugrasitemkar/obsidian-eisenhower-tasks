@@ -143,7 +143,14 @@ export class EisenhowerView extends ItemView {
 		const checkbox = taskEl.createEl('input', { type: 'checkbox', cls: 'eisenhower-task-checkbox' });
 		checkbox.checked = false;
 
-		const textSpan = taskEl.createEl('span', { cls: 'eisenhower-task-text', text: task.text });
+		const textRow = taskEl.createDiv({ cls: 'eisenhower-task-body' });
+		const textSpan = textRow.createEl('span', { cls: 'eisenhower-task-text' });
+		this.renderTaskText(textSpan, task.text);
+
+		const date = this.taskManager.extractDate(task.text);
+		if (date) {
+			textRow.createEl('span', { cls: 'eisenhower-task-date', text: date });
+		}
 
 		textSpan.addEventListener('dblclick', (e: MouseEvent) => {
 			e.stopPropagation();
@@ -188,11 +195,46 @@ export class EisenhowerView extends ItemView {
 			this.refresh();
 		};
 
-		input.addEventListener('blur', () => void commit());
+		input.addEventListener('blur', () => {
+			if (document.querySelector('.eisenhower-date-picker-popup')) return;
+			void commit();
+		});
 		input.addEventListener('keydown', (e: KeyboardEvent) => {
 			if (e.key === 'Enter') { e.preventDefault(); void commit(); }
 			if (e.key === 'Escape') { e.preventDefault(); cancel(); }
 		});
+		input.addEventListener('input', () => {
+			if (input.value.endsWith('@')) { this.showDatePicker(input); }
+		});
+	}
+
+	private renderTaskText(container: HTMLElement, text: string): void {
+		const wikiLinkRegex = /\[\[([^\]]+)\]\]/g;
+		let lastIndex = 0;
+		let match;
+		while ((match = wikiLinkRegex.exec(text)) !== null) {
+			if (match.index > lastIndex) {
+				container.appendText(text.slice(lastIndex, match.index));
+			}
+			const inner = match[1];
+			const pipeIdx = inner.indexOf('|');
+			const target = pipeIdx >= 0 ? inner.slice(0, pipeIdx) : inner;
+			const display = pipeIdx >= 0 ? inner.slice(pipeIdx + 1) : inner;
+			const link = container.createEl('a', {
+				cls: 'eisenhower-wiki-link internal-link',
+				text: display,
+				attr: { 'data-href': target, href: target },
+			});
+			link.addEventListener('click', (e: MouseEvent) => {
+				e.preventDefault();
+				e.stopPropagation();
+				this.app.workspace.openLinkText(target, '', false);
+			});
+			lastIndex = match.index + match[0].length;
+		}
+		if (lastIndex < text.length) {
+			container.appendText(text.slice(lastIndex));
+		}
 	}
 
 	// Single add-task button per quadrant → adds to Uncategorized
@@ -216,6 +258,47 @@ export class EisenhowerView extends ItemView {
 		input.addEventListener('keydown', (e: KeyboardEvent) => {
 			if (e.key === 'Enter') { e.preventDefault(); void submit(); }
 		});
+		input.addEventListener('input', () => {
+			if (input.value.endsWith('@')) { this.showDatePicker(input); }
+		});
+	}
+
+	private showDatePicker(targetInput: HTMLInputElement): void {
+		const existing = document.querySelector('.eisenhower-date-picker-popup');
+		if (existing) existing.remove();
+
+		const popup = document.body.createDiv({ cls: 'eisenhower-date-picker-popup' });
+		const dateInput = popup.createEl('input', { type: 'date' });
+
+		const rect = targetInput.getBoundingClientRect();
+		popup.style.top = `${rect.bottom + 4}px`;
+		popup.style.left = `${rect.left}px`;
+
+		const insert = (value: string) => {
+			const cur = targetInput.value;
+			const base = cur.endsWith('@') ? cur.slice(0, -1) : cur;
+			targetInput.value = `${base.trimEnd()} @${value}`.trimStart();
+			popup.remove();
+			targetInput.focus();
+		};
+
+		dateInput.addEventListener('change', () => {
+			if (dateInput.value) insert(dateInput.value);
+		});
+
+		dateInput.addEventListener('keydown', (e: KeyboardEvent) => {
+			if (e.key === 'Escape') { popup.remove(); targetInput.focus(); }
+		});
+
+		// Close when focus leaves the popup (but not to native picker)
+		dateInput.addEventListener('blur', () => {
+			setTimeout(() => {
+				if (!popup.isConnected) return;
+				if (!popup.contains(document.activeElement)) popup.remove();
+			}, 300);
+		});
+
+		setTimeout(() => dateInput.focus(), 10);
 	}
 
 	private renderAddSectionRow(parent: HTMLElement, quadrant: QuadrantKey): void {

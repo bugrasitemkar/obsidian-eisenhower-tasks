@@ -1,4 +1,4 @@
-import { TFile, Notice } from 'obsidian';
+import { TFile, TFolder, Notice } from 'obsidian';
 import type EisenhowerTasksPlugin from './main';
 import {
 	DEFAULT_DATA,
@@ -60,6 +60,7 @@ export class TaskManager {
 		};
 		this.data.tasks.push(task);
 		await this.save();
+		await this.syncCalendarEvent(task);
 		return task;
 	}
 
@@ -68,6 +69,7 @@ export class TaskManager {
 		if (!task || !newText.trim()) return;
 		task.text = newText.trim();
 		await this.save();
+		await this.syncCalendarEvent(task);
 	}
 
 	async moveTask(taskId: string, newQuadrant: QuadrantKey, newSection: string): Promise<void> {
@@ -92,6 +94,7 @@ export class TaskManager {
 		}
 
 		await this.save();
+		await this.syncCalendarEvent(task);
 	}
 
 	async completeTask(id: string): Promise<void> {
@@ -99,6 +102,7 @@ export class TaskManager {
 		if (!task) return;
 		task.completed = true;
 		await this.archiveTask(task);
+		await this.removeCalendarEvent(task);
 		this.data.tasks = this.data.tasks.filter(t => t.id !== id);
 		await this.save();
 	}
@@ -179,5 +183,96 @@ export class TaskManager {
 			}
 		}
 		return map;
+	}
+
+	extractDate(text: string): string | null {
+		const match = text.match(/@(\d{4}-\d{2}-\d{2})/);
+		return match ? match[1] : null;
+	}
+
+	getCalendarFolder(sectionName: string): string {
+		const s = this.data.settings;
+		if (sectionName === 'Personal') return s.personalCalendarFolder;
+		if (sectionName === 'Work') return s.workCalendarFolder;
+		return s.fullCalendarFolder;
+	}
+
+	private calendarEventPath(task: Task): string {
+		return `${this.getCalendarFolder(task.section)}/${task.id}.md`;
+	}
+
+	async syncCalendarEvent(task: Task): Promise<void> {
+		if (!this.data.settings.fullCalendarIntegration) return;
+		const date = this.extractDate(task.text);
+		if (!date) return;
+
+		const { app } = this.plugin;
+		const folderPath = this.getCalendarFolder(task.section);
+		const filePath = this.calendarEventPath(task);
+
+		if (!app.vault.getAbstractFileByPath(folderPath)) {
+			await app.vault.createFolder(folderPath);
+		}
+
+		const cleanTitle = task.text.replace(/@\d{4}-\d{2}-\d{2}/g, '').trim();
+		const content = `---\ntitle: "${cleanTitle}"\ndate: ${date}\nallDay: true\n---\n`;
+
+		const existing = app.vault.getAbstractFileByPath(filePath);
+		if (existing instanceof TFile) {
+			await app.vault.modify(existing, content);
+		} else {
+			await app.vault.create(filePath, content);
+		}
+	}
+
+	async removeCalendarEvent(task: Task): Promise<void> {
+		if (!this.data.settings.fullCalendarIntegration) return;
+		const { app } = this.plugin;
+		const file = app.vault.getAbstractFileByPath(this.calendarEventPath(task));
+		if (file instanceof TFile) {
+			await app.vault.delete(file);
+		}
+	}
+
+	async syncAllCalendarEvents(): Promise<void> {
+		if (!this.data.settings.fullCalendarIntegration) return;
+		const { app } = this.plugin;
+
+		// Clean stale files across all calendar folders
+		const allFolders = new Set([
+			this.data.settings.fullCalendarFolder,
+			this.data.settings.personalCalendarFolder,
+			this.data.settings.workCalendarFolder,
+		]);
+		const activeIds = new Set(this.data.tasks.map(t => t.id));
+		for (const folderPath of allFolders) {
+			const folder = app.vault.getAbstractFileByPath(folderPath);
+			if (folder instanceof TFolder) {
+				for (const child of folder.children) {
+					if (child instanceof TFile && !activeIds.has(child.basename)) {
+						await app.vault.delete(child);
+					}
+				}
+			}
+		}
+
+		for (const task of this.data.tasks) {
+			await this.syncCalendarEvent(task);
+		}
+	}
+
+	async enableDefaultSections(): Promise<void> {
+		const defaultNames = ['Personal', 'Work'];
+		let changed = false;
+		for (const key of QUADRANT_KEYS) {
+			for (const name of defaultNames) {
+				const exists = this.data.sections[key].some(s => s.name === name);
+				if (!exists) {
+					this.data.sections[key].push({ id: crypto.randomUUID(), name });
+					changed = true;
+				}
+			}
+		}
+		if (changed) await this.save();
 	}
 }
