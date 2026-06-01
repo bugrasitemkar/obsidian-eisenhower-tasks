@@ -9,6 +9,7 @@ const DRAG_TASK_ID_KEY = 'eisenhower-task-id';
 export class EisenhowerView extends ItemView {
 	private taskManager: TaskManager;
 	private fullscreenQuadrant: QuadrantKey | null = null;
+	private filePickerOpen = false;
 
 	constructor(leaf: WorkspaceLeaf, taskManager: TaskManager) {
 		super(leaf);
@@ -197,6 +198,7 @@ export class EisenhowerView extends ItemView {
 
 		input.addEventListener('blur', () => {
 			if (document.querySelector('.eisenhower-date-picker-popup')) return;
+			if (this.filePickerOpen) return;
 			void commit();
 		});
 		input.addEventListener('keydown', (e: KeyboardEvent) => {
@@ -328,13 +330,20 @@ export class EisenhowerView extends ItemView {
 	}
 
 	private showFilePicker(targetInput: HTMLInputElement): void {
-		new FileLinkModal(this.app, (file: TFile) => {
-			const cur = targetInput.value;
-			const base = cur.endsWith('[[') ? cur.slice(0, -2) : cur;
-			const linkPath = file.path.endsWith('.md') ? file.path.slice(0, -3) : file.path;
-			targetInput.value = `${base}[[${linkPath}]]`;
-			targetInput.focus();
-		}).open();
+		this.filePickerOpen = true;
+		new FileLinkModal(
+			this.app,
+			(file: TFile) => {
+				const cur = targetInput.value;
+				const base = cur.endsWith('[[') ? cur.slice(0, -2) : cur;
+				const linkPath = file.path.endsWith('.md') ? file.path.slice(0, -3) : file.path;
+				targetInput.value = `${base}[[${linkPath}]]`;
+			},
+			() => {
+				this.filePickerOpen = false;
+				targetInput.focus();
+			}
+		).open();
 	}
 
 	private startInlineRename(
@@ -381,11 +390,17 @@ export class EisenhowerView extends ItemView {
 }
 
 class FileLinkModal extends FuzzySuggestModal<TFile> {
-	private onChoose: (file: TFile) => void;
+	private onChooseCb: (file: TFile) => void;
+	private onDismiss: () => void;
 
-	constructor(app: import('obsidian').App, onChoose: (file: TFile) => void) {
+	constructor(
+		app: import('obsidian').App,
+		onChoose: (file: TFile) => void,
+		onDismiss: () => void,
+	) {
 		super(app);
-		this.onChoose = onChoose;
+		this.onChooseCb = onChoose;
+		this.onDismiss = onDismiss;
 		this.setPlaceholder('Search notes to link…');
 	}
 
@@ -399,6 +414,11 @@ class FileLinkModal extends FuzzySuggestModal<TFile> {
 	}
 
 	onChooseItem(file: TFile): void {
-		this.onChoose(file);
+		this.onChooseCb(file);
+	}
+
+	onClose(): void {
+		super.onClose();
+		this.onDismiss();
 	}
 }
