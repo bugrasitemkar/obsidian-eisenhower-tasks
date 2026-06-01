@@ -1,0 +1,11 @@
+node_modules/
+main.js
+*.js.map
+*.tsbuildinfo
+.DS_Store
+Thumbs.db
+data.json
+.env
+.vscode/
+.idea/
+.claude/settings.local.json

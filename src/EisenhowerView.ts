@@ -1,0 +1,194 @@
+import { ItemView, WorkspaceLeaf, setIcon } from 'obsidian';
+import { QUADRANT_KEYS, QUADRANT_LABELS, UNCATEGORIZED, type QuadrantKey, type SectionDef, type Task } from './types';
+import { TaskManager } from './TaskManager';
+
+export const VIEW_TYPE_EISENHOWER = 'eisenhower-tasks-view';
+
+export class EisenhowerView extends ItemView {
+	private taskManager: TaskManager;
+
+	constructor(leaf: WorkspaceLeaf, taskManager: TaskManager) {
+		super(leaf);
+		this.taskManager = taskManager;
+	}
+
+	getViewType(): string {
+		return VIEW_TYPE_EISENHOWER;
+	}
+
+	getDisplayText(): string {
+		return 'Eisenhower Tasks';
+	}
+
+	getIcon(): string {
+		return 'layout-grid';
+	}
+
+	async onOpen(): Promise<void> {
+		this.render();
+	}
+
+	async onClose(): Promise<void> {
+		// nothing to clean up
+	}
+
+	private render(): void {
+		const { contentEl } = this;
+		contentEl.empty();
+		contentEl.addClass('eisenhower-view');
+
+		const grid = contentEl.createDiv({ cls: 'eisenhower-grid' });
+
+		for (const key of QUADRANT_KEYS) {
+			this.renderQuadrant(grid, key);
+		}
+	}
+
+	private refresh(): void {
+		this.render();
+	}
+
+	private renderQuadrant(parent: HTMLElement, key: QuadrantKey): void {
+		const labels = QUADRANT_LABELS[key];
+		const quadrantEl = parent.createDiv({ cls: `eisenhower-quadrant eisenhower-${key}` });
+
+		const header = quadrantEl.createDiv({ cls: 'eisenhower-quadrant-header' });
+		header.createEl('div', { cls: 'eisenhower-quadrant-title', text: labels.title });
+		header.createEl('div', { cls: 'eisenhower-quadrant-subtitle', text: labels.subtitle });
+
+		const sectionsContainer = quadrantEl.createDiv({ cls: 'eisenhower-sections-container' });
+
+		const tasksBySection = this.taskManager.getTasksBySection(key);
+		const sections = this.taskManager.data.sections[key];
+
+		for (const section of sections) {
+			const tasks = tasksBySection.get(section.name) ?? [];
+			this.renderSection(sectionsContainer, key, section, tasks);
+		}
+
+		this.renderAddSectionRow(quadrantEl, key);
+	}
+
+	private renderSection(
+		parent: HTMLElement,
+		quadrant: QuadrantKey,
+		section: SectionDef,
+		tasks: Task[]
+	): void {
+		const sectionEl = parent.createDiv({ cls: 'eisenhower-section' });
+		const isDefault = section.name === UNCATEGORIZED;
+
+		const headerRow = sectionEl.createDiv({ cls: 'eisenhower-section-header' });
+		const nameSpan = headerRow.createEl('span', { cls: 'eisenhower-section-name', text: section.name });
+
+		if (!isDefault) {
+			const renameBtn = headerRow.createEl('button', { cls: 'eisenhower-icon-btn', attr: { 'aria-label': 'Rename section' } });
+			setIcon(renameBtn, 'pencil');
+			renameBtn.addEventListener('click', () => {
+				this.startInlineRename(headerRow, nameSpan, quadrant, section);
+			});
+
+			const deleteBtn = headerRow.createEl('button', { cls: 'eisenhower-icon-btn eisenhower-delete-btn', attr: { 'aria-label': 'Delete section' } });
+			setIcon(deleteBtn, 'trash-2');
+			deleteBtn.addEventListener('click', async () => {
+				await this.taskManager.deleteSection(quadrant, section.id);
+				this.refresh();
+			});
+		}
+
+		const taskList = sectionEl.createDiv({ cls: 'eisenhower-task-list' });
+		for (const task of tasks) {
+			this.renderTask(taskList, task);
+		}
+
+		this.renderAddTaskRow(sectionEl, quadrant, section.name);
+	}
+
+	private renderTask(parent: HTMLElement, task: Task): void {
+		const taskEl = parent.createDiv({ cls: 'eisenhower-task' });
+		const checkbox = taskEl.createEl('input', { type: 'checkbox', cls: 'eisenhower-task-checkbox' });
+		checkbox.checked = false;
+		taskEl.createEl('span', { cls: 'eisenhower-task-text', text: task.text });
+
+		checkbox.addEventListener('change', async () => {
+			if (checkbox.checked) {
+				await this.taskManager.completeTask(task.id);
+				this.refresh();
+			}
+		});
+	}
+
+	private renderAddTaskRow(parent: HTMLElement, quadrant: QuadrantKey, sectionName: string): void {
+		const row = parent.createDiv({ cls: 'eisenhower-add-task' });
+		const input = row.createEl('input', { type: 'text', cls: 'eisenhower-add-task-input', placeholder: 'Add task…' });
+		const addBtn = row.createEl('button', { cls: 'eisenhower-add-btn', text: 'Add' });
+
+		const submit = async () => {
+			const text = input.value.trim();
+			if (!text) return;
+			await this.taskManager.addTask(quadrant, sectionName, text);
+			this.refresh();
+		};
+
+		addBtn.addEventListener('click', submit);
+		input.addEventListener('keydown', (e: KeyboardEvent) => {
+			if (e.key === 'Enter') { e.preventDefault(); void submit(); }
+		});
+	}
+
+	private renderAddSectionRow(parent: HTMLElement, quadrant: QuadrantKey): void {
+		const row = parent.createDiv({ cls: 'eisenhower-add-section' });
+		const input = row.createEl('input', { type: 'text', cls: 'eisenhower-add-section-input', placeholder: 'New section name…' });
+		const addBtn = row.createEl('button', { cls: 'eisenhower-add-btn', text: 'Add Section' });
+
+		const submit = async () => {
+			const name = input.value.trim();
+			if (!name || name === UNCATEGORIZED) return;
+			const exists = this.taskManager.data.sections[quadrant].some(s => s.name === name);
+			if (exists) return;
+			await this.taskManager.addSection(quadrant, name);
+			this.refresh();
+		};
+
+		addBtn.addEventListener('click', submit);
+		input.addEventListener('keydown', (e: KeyboardEvent) => {
+			if (e.key === 'Enter') { e.preventDefault(); void submit(); }
+		});
+	}
+
+	private startInlineRename(
+		headerRow: HTMLElement,
+		nameSpan: HTMLElement,
+		quadrant: QuadrantKey,
+		section: SectionDef
+	): void {
+		const originalName = section.name;
+		nameSpan.style.display = 'none';
+
+		const input = headerRow.createEl('input', {
+			type: 'text',
+			cls: 'eisenhower-rename-input',
+			value: originalName,
+		});
+		input.focus();
+		input.select();
+
+		const commit = async () => {
+			const newName = input.value.trim();
+			if (newName && newName !== originalName) {
+				await this.taskManager.renameSection(quadrant, section.id, newName);
+			}
+			this.refresh();
+		};
+
+		const cancel = () => {
+			this.refresh();
+		};
+
+		input.addEventListener('blur', () => void commit());
+		input.addEventListener('keydown', (e: KeyboardEvent) => {
+			if (e.key === 'Enter') { e.preventDefault(); input.removeEventListener('blur', () => void commit()); void commit(); }
+			if (e.key === 'Escape') { e.preventDefault(); input.removeEventListener('blur', () => void commit()); cancel(); }
+		});
+	}
+}
