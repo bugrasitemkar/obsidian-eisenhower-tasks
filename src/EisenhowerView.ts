@@ -199,6 +199,9 @@ export class EisenhowerView extends ItemView {
 			if (e.key === 'Enter') { e.preventDefault(); void commit(); }
 			if (e.key === 'Escape') { e.preventDefault(); cancel(); }
 		});
+		input.addEventListener('input', () => {
+			if (input.value.endsWith('@')) { this.showDatePicker(input); }
+		});
 	}
 
 	// Single add-task button per quadrant → adds to Uncategorized
