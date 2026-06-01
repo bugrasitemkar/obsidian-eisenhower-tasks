@@ -64,6 +64,14 @@ export class TaskManager {
 		return task;
 	}
 
+	async updateTaskText(taskId: string, newText: string): Promise<void> {
+		const task = this.data.tasks.find(t => t.id === taskId);
+		if (!task || !newText.trim()) return;
+		task.text = newText.trim();
+		await this.save();
+		await this.syncCalendarEvent(task);
+	}
+
 	async moveTask(taskId: string, newQuadrant: QuadrantKey, newSection: string): Promise<void> {
 		const task = this.data.tasks.find(t => t.id === taskId);
 		if (!task) return;

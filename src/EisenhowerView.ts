@@ -144,18 +144,60 @@ export class EisenhowerView extends ItemView {
 		checkbox.checked = false;
 
 		const textRow = taskEl.createDiv({ cls: 'eisenhower-task-body' });
-		textRow.createEl('span', { cls: 'eisenhower-task-text', text: task.text });
+		const textSpan = textRow.createEl('span', { cls: 'eisenhower-task-text', text: task.text });
 
 		const date = this.taskManager.extractDate(task.text);
 		if (date) {
 			textRow.createEl('span', { cls: 'eisenhower-task-date', text: date });
 		}
 
+		textSpan.addEventListener('dblclick', (e: MouseEvent) => {
+			e.stopPropagation();
+			this.startInlineTaskEdit(taskEl, textSpan, task);
+		});
+
 		checkbox.addEventListener('change', async () => {
 			if (checkbox.checked) {
 				await this.taskManager.completeTask(task.id);
 				this.refresh();
 			}
+		});
+	}
+
+	private startInlineTaskEdit(taskEl: HTMLElement, textSpan: HTMLElement, task: Task): void {
+		taskEl.draggable = false;
+		textSpan.style.display = 'none';
+
+		const input = taskEl.createEl('input', {
+			type: 'text',
+			cls: 'eisenhower-task-edit-input',
+			value: task.text,
+		});
+		input.focus();
+		input.select();
+
+		let committed = false;
+
+		const commit = async () => {
+			if (committed) return;
+			committed = true;
+			const newText = input.value.trim();
+			if (newText && newText !== task.text) {
+				await this.taskManager.updateTaskText(task.id, newText);
+			}
+			this.refresh();
+		};
+
+		const cancel = () => {
+			if (committed) return;
+			committed = true;
+			this.refresh();
+		};
+
+		input.addEventListener('blur', () => void commit());
+		input.addEventListener('keydown', (e: KeyboardEvent) => {
+			if (e.key === 'Enter') { e.preventDefault(); void commit(); }
+			if (e.key === 'Escape') { e.preventDefault(); cancel(); }
 		});
 	}
 
@@ -179,7 +221,42 @@ export class EisenhowerView extends ItemView {
 		addBtn.addEventListener('click', submit);
 		input.addEventListener('keydown', (e: KeyboardEvent) => {
 			if (e.key === 'Enter') { e.preventDefault(); void submit(); }
+			if (e.key === '@') { this.showDatePicker(input); }
 		});
+	}
+
+	private showDatePicker(targetInput: HTMLInputElement): void {
+		const existing = document.querySelector('.eisenhower-date-picker-popup');
+		if (existing) existing.remove();
+
+		const popup = document.body.createDiv({ cls: 'eisenhower-date-picker-popup' });
+		const dateInput = popup.createEl('input', { type: 'date' });
+
+		const rect = targetInput.getBoundingClientRect();
+		popup.style.top = `${rect.bottom + window.scrollY + 4}px`;
+		popup.style.left = `${rect.left + window.scrollX}px`;
+
+		const insert = (value: string) => {
+			const cur = targetInput.value;
+			// Replace trailing @ if just typed, append the date tag
+			const base = cur.endsWith('@') ? cur.slice(0, -1) : cur;
+			targetInput.value = `${base.trimEnd()} @${value}`.trimStart();
+			popup.remove();
+			targetInput.focus();
+		};
+
+		dateInput.addEventListener('change', () => { if (dateInput.value) insert(dateInput.value); });
+		dateInput.addEventListener('keydown', (e: KeyboardEvent) => {
+			if (e.key === 'Escape') { popup.remove(); targetInput.focus(); }
+		});
+
+		const close = (e: MouseEvent) => {
+			if (!popup.contains(e.target as Node)) { popup.remove(); document.removeEventListener('mousedown', close); }
+		};
+		document.addEventListener('mousedown', close);
+
+		// Open the native date picker
+		setTimeout(() => { dateInput.focus(); dateInput.showPicker?.(); }, 10);
 	}
 
 	private renderAddSectionRow(parent: HTMLElement, quadrant: QuadrantKey): void {

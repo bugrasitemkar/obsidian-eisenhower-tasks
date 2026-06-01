@@ -219,6 +219,18 @@
 	color: var(--text-normal);
 	line-height: 1.4;
 	word-break: break-word;
+	flex: 1;
+	cursor: text;
+}
+
+.eisenhower-task-edit-input {
+	flex: 1;
+	font-size: var(--font-ui-small);
+	padding: 1px 4px;
+	border: 1px solid var(--interactive-accent);
+	border-radius: var(--radius-s);
+	background: var(--background-primary);
+	color: var(--text-normal);
 }
 
 .eisenhower-task-date {
@@ -267,4 +279,24 @@
 
 .eisenhower-add-btn:hover {
 	background: var(--interactive-hover);
+}
+
+/* ── Date picker popup ── */
+.eisenhower-date-picker-popup {
+	position: fixed;
+	z-index: 1000;
+	background: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	padding: 6px;
+	box-shadow: var(--shadow-l);
+}
+
+.eisenhower-date-picker-popup input[type="date"] {
+	background: var(--background-primary);
+	color: var(--text-normal);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	padding: 4px 6px;
+	font-size: var(--font-ui-small);
 }
