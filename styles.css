@@ -309,3 +309,41 @@
 	padding: 4px 6px;
 	font-size: var(--font-ui-small);
 }
+
+/* ── Subtasks ── */
+.eisenhower-task[data-depth="1"] {
+	margin-left: 16px;
+}
+
+.eisenhower-task[data-depth="2"] {
+	margin-left: 32px;
+}
+
+.eisenhower-subtask-list {
+	display: flex;
+	flex-direction: column;
+	width: 100%;
+	gap: 1px;
+	margin-top: 2px;
+}
+
+.eisenhower-task.drop-target {
+	outline: 2px dashed var(--interactive-accent);
+	outline-offset: -1px;
+	border-radius: var(--radius-s);
+}
+
+.eisenhower-task.drop-target-blocked {
+	outline: 2px dashed var(--color-red);
+	outline-offset: -1px;
+}
+
+.eisenhower-task-delete {
+	opacity: 0;
+	transition: opacity 0.1s ease;
+	flex-shrink: 0;
+}
+
+.eisenhower-task:hover .eisenhower-task-delete {
+	opacity: 1;
+}

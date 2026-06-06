@@ -11,6 +11,8 @@ export const QUADRANT_KEYS: QuadrantKey[] = ['q1', 'q2', 'q3', 'q4'];
 
 export const UNCATEGORIZED = 'Uncategorized';
 
+export const MAX_SUBTASK_DEPTH = 2;
+
 export interface Task {
 	id: string;
 	text: string;
@@ -18,6 +20,7 @@ export interface Task {
 	section: string;
 	completed: boolean;
 	createdAt: number;
+	parentId?: string;
 }
 
 export interface SectionDef {
@@ -32,6 +35,7 @@ export interface PluginSettings {
 	fullCalendarFolder: string;
 	personalCalendarFolder: string;
 	workCalendarFolder: string;
+	enableSubtasks: boolean;
 }
 
 export const DEFAULT_SETTINGS: PluginSettings = {
@@ -41,6 +45,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 	fullCalendarFolder: 'Calendar/Eisenhower',
 	personalCalendarFolder: 'Calendar/Personal',
 	workCalendarFolder: 'Calendar/Work',
+	enableSubtasks: false,
 };
 
 export interface PluginData {

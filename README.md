@@ -42,6 +42,34 @@ Type in the *Add task…* input at the bottom of each quadrant and press **Enter
 ### Drag & Drop
 Drag any task to a different section within the same quadrant, or across quadrants entirely. Drop zones highlight as you hover. Tasks carry their text and metadata with them.
 
+With **subtasks enabled**, you can also drag a task *onto another task* to make it a child (see [Subtasks](#subtasks) below).
+
+### Subtasks
+Enable **Subtasks** in settings to allow up to 3 levels of task hierarchy: *parent → child → grandchild*.
+
+**Creating subtasks:**
+- Drag a task **onto another task** → it becomes a child of that task (drop zone highlights with a dashed accent border)
+- Drag a task **onto the section background** → moves it to that section as a top-level task (original behaviour)
+- Invalid drops (would exceed max depth, or would create a cycle) show a red dashed border and are blocked
+
+**Archive behaviour with subtasks:**
+A parent task only archives when it *and all its subtasks* are marked complete. Tasks stay visible (with a checked state) until the entire tree is done, then the whole tree archives together.
+
+```markdown
+## Q1 — Do First
+### Work
+- [x] Prepare the quarterly report
+  - [x] Gather Q3 data
+    - [x] Export from analytics
+  - [x] Write executive summary
+```
+
+**Edge cases handled automatically:**
+- If a parent is checked and you drag its last child away (breaking the hierarchy), the parent archives immediately
+- Moving a subtask moves its entire sub-tree with it
+- Deleting a parent orphans its direct children back to the section as top-level tasks; grandchildren stay attached to their parents
+- Dropping a task onto its own descendant is blocked (would create a cycle)
+
 ### Completing Tasks
 Check the checkbox next to a task. It is removed from the view and appended to **Eisenhower Archive.md** in your vault root under the correct quadrant and section heading.
 
@@ -69,6 +97,8 @@ Open **Settings → Eisenhower Tasks** to configure:
 | Setting | Description |
 |---------|-------------|
 | **Auto-tag on move** | When a task is dragged into a section, appends the section name as a tag (e.g. `#work-projects`) to the task text. |
+| **Personal & Work sections** | Adds "Personal" and "Work" sections to every quadrant automatically. |
+| **Enable subtasks** | Allows up to 3 levels of task hierarchy. Drag a task onto another task to nest it as a child. A parent only archives when it and all its subtasks are completed. |
 
 ---
 

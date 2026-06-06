@@ -90,8 +90,22 @@ class EisenhowerSettingTab extends PluginSettingTab {
 						this.plugin.taskManager.data.settings.useDefaultSections = value;
 						await this.plugin.taskManager.save();
 						if (value) await this.plugin.taskManager.enableDefaultSections();
-						this.plugin.app.workspace.getLeavesOfType('eisenhower-tasks-view')
-							.forEach(l => (l.view as { render?: () => void }).render?.());
+						this.plugin.app.workspace.getLeavesOfType(VIEW_TYPE_EISENHOWER)
+							.forEach(l => (l.view as EisenhowerView).refresh());
+					})
+			);
+
+		new Setting(containerEl)
+			.setName('Enable subtasks')
+			.setDesc('Allow up to 3 levels of task hierarchy. Drag a task onto another task to make it a subtask. A parent task only archives when it and all its subtasks are completed.')
+			.addToggle(toggle =>
+				toggle
+					.setValue(this.plugin.taskManager.data.settings.enableSubtasks)
+					.onChange(async (value) => {
+						this.plugin.taskManager.data.settings.enableSubtasks = value;
+						await this.plugin.taskManager.save();
+						this.plugin.app.workspace.getLeavesOfType(VIEW_TYPE_EISENHOWER)
+							.forEach(l => (l.view as EisenhowerView).refresh());
 					})
 			);
 

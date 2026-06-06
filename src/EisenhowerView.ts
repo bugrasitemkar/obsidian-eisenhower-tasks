@@ -1,5 +1,5 @@
 import { ItemView, WorkspaceLeaf, setIcon, FuzzySuggestModal, TFile } from 'obsidian';
-import { QUADRANT_KEYS, QUADRANT_LABELS, UNCATEGORIZED, type QuadrantKey, type SectionDef, type Task } from './types';
+import { MAX_SUBTASK_DEPTH, QUADRANT_KEYS, QUADRANT_LABELS, UNCATEGORIZED, type QuadrantKey, type SectionDef, type Task } from './types';
 import { TaskManager } from './TaskManager';
 
 export const VIEW_TYPE_EISENHOWER = 'eisenhower-tasks-view';
@@ -10,6 +10,7 @@ export class EisenhowerView extends ItemView {
 	private taskManager: TaskManager;
 	private fullscreenQuadrant: QuadrantKey | null = null;
 	private filePickerOpen = false;
+	private draggingTaskId: string | null = null;
 
 	constructor(leaf: WorkspaceLeaf, taskManager: TaskManager) {
 		super(leaf);
@@ -36,7 +37,7 @@ export class EisenhowerView extends ItemView {
 		}
 	}
 
-	private refresh(): void { this.render(); }
+	refresh(): void { this.render(); }
 
 	private renderQuadrant(parent: HTMLElement, key: QuadrantKey): void {
 		const labels = QUADRANT_LABELS[key];
@@ -131,15 +132,60 @@ export class EisenhowerView extends ItemView {
 		}
 	}
 
-	private renderTask(parent: HTMLElement, task: Task): void {
+	private renderTask(parent: HTMLElement, task: Task, depth = 0): void {
+		const subtasksEnabled = this.taskManager.data.settings.enableSubtasks;
 		const taskEl = parent.createDiv({ cls: 'eisenhower-task', attr: { draggable: 'true' } });
+		if (subtasksEnabled) {
+			taskEl.dataset['depth'] = String(depth);
+		}
 
 		taskEl.addEventListener('dragstart', (e: DragEvent) => {
+			e.stopPropagation();
+			this.draggingTaskId = task.id;
 			e.dataTransfer?.setData(DRAG_TASK_ID_KEY, task.id);
 			if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
 			taskEl.addClass('is-dragging');
 		});
-		taskEl.addEventListener('dragend', () => taskEl.removeClass('is-dragging'));
+		taskEl.addEventListener('dragend', () => {
+			this.draggingTaskId = null;
+			taskEl.removeClass('is-dragging');
+			document.querySelectorAll('.eisenhower-task.drop-target, .eisenhower-task.drop-target-blocked')
+				.forEach(el => el.classList.remove('drop-target', 'drop-target-blocked'));
+		});
+
+		// Task-level drop zone for reparenting (only when subtasks enabled and not at max depth)
+		if (subtasksEnabled && depth < MAX_SUBTASK_DEPTH) {
+			taskEl.addEventListener('dragover', (e: DragEvent) => {
+				e.stopPropagation();
+				const draggedId = this.draggingTaskId;
+				if (!draggedId || draggedId === task.id) return;
+				const blocked =
+					this.taskManager.isDescendant(draggedId, task.id) ||
+					this.taskManager.wouldExceedMaxDepth(draggedId, task.id);
+				taskEl.classList.remove('drop-target', 'drop-target-blocked');
+				if (blocked) {
+					taskEl.addClass('drop-target-blocked');
+				} else {
+					e.preventDefault();
+					taskEl.addClass('drop-target');
+					if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+				}
+			});
+			taskEl.addEventListener('dragleave', (e: DragEvent) => {
+				if (!taskEl.contains(e.relatedTarget as Node)) {
+					taskEl.classList.remove('drop-target', 'drop-target-blocked');
+				}
+			});
+			taskEl.addEventListener('drop', async (e: DragEvent) => {
+				e.stopPropagation();
+				e.preventDefault();
+				taskEl.classList.remove('drop-target', 'drop-target-blocked');
+				const draggedId = e.dataTransfer?.getData(DRAG_TASK_ID_KEY);
+				if (!draggedId || draggedId === task.id) return;
+				await this.taskManager.reparentTask(draggedId, task.id);
+				this.refresh();
+			});
+		}
 
 		const checkbox = taskEl.createEl('input', { type: 'checkbox', cls: 'eisenhower-task-checkbox' });
 		checkbox.checked = false;
@@ -164,6 +210,27 @@ export class EisenhowerView extends ItemView {
 				this.refresh();
 			}
 		});
+
+		if (subtasksEnabled) {
+			const deleteBtn = taskEl.createEl('button', {
+				cls: 'eisenhower-icon-btn eisenhower-delete-btn eisenhower-task-delete',
+				attr: { 'aria-label': 'Delete task' },
+			});
+			setIcon(deleteBtn, 'x');
+			deleteBtn.addEventListener('click', async (e: MouseEvent) => {
+				e.stopPropagation();
+				await this.taskManager.deleteTask(task.id);
+				this.refresh();
+			});
+
+			const children = this.taskManager.getDirectChildren(task.id);
+			if (children.length > 0) {
+				const childContainer = taskEl.createDiv({ cls: 'eisenhower-subtask-list' });
+				for (const child of children) {
+					this.renderTask(childContainer, child, depth + 1);
+				}
+			}
+		}
 	}
 
 	private startInlineTaskEdit(taskEl: HTMLElement, textSpan: HTMLElement, task: Task): void {

@@ -2,6 +2,7 @@ import { TFile, TFolder, Notice } from 'obsidian';
 import type EisenhowerTasksPlugin from './main';
 import {
 	DEFAULT_DATA,
+	MAX_SUBTASK_DEPTH,
 	QUADRANT_KEYS,
 	QUADRANT_LABELS,
 	UNCATEGORIZED,
@@ -49,6 +50,166 @@ export class TaskManager {
 		await this.plugin.saveData(this.data);
 	}
 
+	// ── Subtask helpers ────────────────────────────────────────────────────
+
+	getSubtreeIds(rootId: string): string[] {
+		const result: string[] = [rootId];
+		const queue: string[] = [rootId];
+		while (queue.length > 0) {
+			const current = queue.shift()!;
+			for (const task of this.data.tasks) {
+				if (task.parentId === current) {
+					result.push(task.id);
+					queue.push(task.id);
+				}
+			}
+		}
+		return result;
+	}
+
+	private getDepth(taskId: string): number {
+		let depth = 0;
+		const visited = new Set<string>();
+		let current = taskId;
+		while (true) {
+			const task = this.data.tasks.find(t => t.id === current);
+			if (!task?.parentId) return depth;
+			if (visited.has(task.parentId)) return depth;
+			visited.add(current);
+			depth++;
+			current = task.parentId;
+		}
+	}
+
+	private getSubtreeHeight(rootId: string): number {
+		const children = this.data.tasks.filter(t => t.parentId === rootId);
+		if (children.length === 0) return 0;
+		return 1 + Math.max(...children.map(c => this.getSubtreeHeight(c.id)));
+	}
+
+	wouldExceedMaxDepth(draggedId: string, targetId: string): boolean {
+		const newMaxDepth = (this.getDepth(targetId) + 1) + this.getSubtreeHeight(draggedId);
+		return newMaxDepth > MAX_SUBTASK_DEPTH;
+	}
+
+	isDescendant(ancestorId: string, descendantId: string): boolean {
+		const visited = new Set<string>();
+		let current = descendantId;
+		while (true) {
+			const task = this.data.tasks.find(t => t.id === current);
+			if (!task?.parentId) return false;
+			if (task.parentId === ancestorId) return true;
+			if (visited.has(task.parentId)) return false;
+			visited.add(current);
+			current = task.parentId;
+		}
+	}
+
+	getDirectChildren(parentId: string): Task[] {
+		return this.data.tasks
+			.filter(t => t.parentId === parentId)
+			.sort((a, b) => a.createdAt - b.createdAt);
+	}
+
+	private findArchiveRoot(taskId: string): string {
+		let current = taskId;
+		const visited = new Set<string>();
+		while (true) {
+			const task = this.data.tasks.find(t => t.id === current);
+			if (!task?.parentId) return current;
+			if (visited.has(task.parentId)) return current;
+			visited.add(current);
+			current = task.parentId;
+		}
+	}
+
+	private async tryArchiveSubtree(rootId: string): Promise<void> {
+		const root = this.data.tasks.find(t => t.id === rootId);
+		if (!root || root.parentId !== undefined || !root.completed) return;
+		const subtreeIds = this.getSubtreeIds(rootId);
+		const allDone = subtreeIds.every(id => {
+			const t = this.data.tasks.find(x => x.id === id);
+			return t?.completed === true;
+		});
+		if (!allDone) return;
+		await this.archiveSubtree(root);
+		for (const id of subtreeIds) {
+			const t = this.data.tasks.find(x => x.id === id);
+			if (t) await this.removeCalendarEvent(t);
+		}
+		this.data.tasks = this.data.tasks.filter(t => !subtreeIds.includes(t.id));
+		await this.save();
+	}
+
+	private async archiveSubtree(root: Task): Promise<void> {
+		const { app } = this.plugin;
+		const archivePath = this.data.archiveFile;
+		const quadrantLabel = QUADRANT_LABELS[root.quadrant];
+		const heading = `## ${root.quadrant.toUpperCase()} — ${quadrantLabel.title}`;
+		const subheading = `### ${root.section}`;
+
+		const renderNode = (taskId: string, indentLevel: number): string => {
+			const task = this.data.tasks.find(t => t.id === taskId);
+			if (!task) return '';
+			const indent = '  '.repeat(indentLevel);
+			const line = `${indent}- [x] ${task.text}`;
+			const children = this.data.tasks
+				.filter(t => t.parentId === taskId)
+				.sort((a, b) => a.createdAt - b.createdAt);
+			if (children.length === 0) return line;
+			const childLines = children
+				.map(c => renderNode(c.id, indentLevel + 1))
+				.filter(Boolean)
+				.join('\n');
+			return childLines ? `${line}\n${childLines}` : line;
+		};
+
+		const body = renderNode(root.id, 0);
+		const block = `\n${heading}\n${subheading}\n${body}\n`;
+
+		const existing = app.vault.getAbstractFileByPath(archivePath);
+		if (existing instanceof TFile) {
+			await app.vault.process(existing, (content) => content + block);
+		} else {
+			await app.vault.create(archivePath, block.trimStart());
+		}
+	}
+
+	async reparentTask(draggedId: string, newParentId: string): Promise<void> {
+		if (draggedId === newParentId) return;
+		const dragged = this.data.tasks.find(t => t.id === draggedId);
+		const target = this.data.tasks.find(t => t.id === newParentId);
+		if (!dragged || !target) return;
+		if (this.isDescendant(draggedId, newParentId)) return;
+		if (this.wouldExceedMaxDepth(draggedId, newParentId)) return;
+
+		const subtreeIds = this.getSubtreeIds(draggedId);
+		for (const id of subtreeIds) {
+			const task = this.data.tasks.find(t => t.id === id);
+			if (task) {
+				task.quadrant = target.quadrant;
+				task.section = target.section;
+			}
+		}
+		dragged.parentId = newParentId;
+		await this.save();
+	}
+
+	async deleteTask(taskId: string): Promise<void> {
+		const task = this.data.tasks.find(t => t.id === taskId);
+		if (!task) return;
+		for (const t of this.data.tasks) {
+			if (t.parentId === taskId) {
+				delete t.parentId;
+			}
+		}
+		this.data.tasks = this.data.tasks.filter(t => t.id !== taskId);
+		await this.removeCalendarEvent(task);
+		await this.save();
+	}
+
+	// ── End subtask helpers ────────────────────────────────────────────────
+
 	async addTask(quadrant: QuadrantKey, sectionName: string, text: string): Promise<Task> {
 		const task: Task = {
 			id: crypto.randomUUID(),
@@ -79,8 +240,22 @@ export class TaskManager {
 		if (sameLocation) return;
 
 		const oldSection = task.section;
-		task.quadrant = newQuadrant;
-		task.section = newSection;
+		const oldParentId = task.parentId;
+
+		// Break parent link when moved to a new section
+		if (task.parentId !== undefined) {
+			delete task.parentId;
+		}
+
+		// Propagate new location to entire subtree
+		const subtreeIds = this.getSubtreeIds(taskId);
+		for (const id of subtreeIds) {
+			const t = this.data.tasks.find(x => x.id === id);
+			if (t) {
+				t.quadrant = newQuadrant;
+				t.section = newSection;
+			}
+		}
 
 		if (
 			this.data.settings.autoTagOnMove &&
@@ -95,33 +270,22 @@ export class TaskManager {
 
 		await this.save();
 		await this.syncCalendarEvent(task);
+
+		// If task had a parent, check if that parent can now archive
+		if (oldParentId !== undefined) {
+			const archiveRoot = this.findArchiveRoot(oldParentId);
+			await this.tryArchiveSubtree(archiveRoot);
+		}
 	}
 
 	async completeTask(id: string): Promise<void> {
 		const task = this.data.tasks.find(t => t.id === id);
 		if (!task) return;
 		task.completed = true;
-		await this.archiveTask(task);
-		await this.removeCalendarEvent(task);
-		this.data.tasks = this.data.tasks.filter(t => t.id !== id);
+		const archiveRoot = this.findArchiveRoot(id);
+		await this.tryArchiveSubtree(archiveRoot);
+		// Persist completed=true even if subtree is not yet fully done
 		await this.save();
-	}
-
-	private async archiveTask(task: Task): Promise<void> {
-		const { app } = this.plugin;
-		const archivePath = this.data.archiveFile;
-		const quadrantLabel = QUADRANT_LABELS[task.quadrant];
-		const heading = `## ${task.quadrant.toUpperCase()} — ${quadrantLabel.title}`;
-		const subheading = `### ${task.section}`;
-		const line = `- [x] ${task.text}`;
-		const block = `\n${heading}\n${subheading}\n${line}\n`;
-
-		const existing = app.vault.getAbstractFileByPath(archivePath);
-		if (existing instanceof TFile) {
-			await app.vault.process(existing, (content) => content + block);
-		} else {
-			await app.vault.create(archivePath, block.trimStart());
-		}
 	}
 
 	async addSection(quadrant: QuadrantKey, name: string): Promise<SectionDef> {
@@ -172,8 +336,11 @@ export class TaskManager {
 		for (const section of this.data.sections[quadrant]) {
 			map.set(section.name, []);
 		}
+		const subtasksEnabled = this.data.settings.enableSubtasks;
 		for (const task of this.data.tasks) {
 			if (task.quadrant !== quadrant) continue;
+			// When subtasks enabled, only render top-level tasks; children render under their parent
+			if (subtasksEnabled && task.parentId !== undefined) continue;
 			const bucket = map.get(task.section);
 			if (bucket) {
 				bucket.push(task);
