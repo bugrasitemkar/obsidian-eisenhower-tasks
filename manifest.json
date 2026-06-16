@@ -2,7 +2,7 @@
   "id": "eisenhower-tasks",
   "name": "Eisenhower Tasks",
   "version": "1.2.1",
-  "minAppVersion": "1.6.0",
+  "minAppVersion": "1.7.4",
   "description": "Organize your tasks by urgency and importance using the Eisenhower Matrix.",
   "author": "Bugra Sitemkar",
   "authorUrl": "https://github.com/bugrasitemkar",

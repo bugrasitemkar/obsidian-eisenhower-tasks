@@ -61,8 +61,6 @@ class EisenhowerSettingTab extends PluginSettingTab {
   display(): void {
     const { containerEl } = this;
     containerEl.empty();
-    new Setting(containerEl).setName("Eisenhower Tasks").setHeading();
-
     new Setting(containerEl)
       .setName("Auto-tag on move")
       .setDesc(
