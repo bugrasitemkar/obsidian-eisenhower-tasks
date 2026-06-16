@@ -145,9 +145,10 @@ export class EisenhowerView extends ItemView {
         attr: { "aria-label": "Delete section" },
       });
       setIcon(deleteBtn, "trash-2");
-      deleteBtn.addEventListener("click", async () => {
-        await this.taskManager.deleteSection(quadrant, section.id);
-        this.refresh();
+      deleteBtn.addEventListener("click", () => {
+        void this.taskManager
+          .deleteSection(quadrant, section.id)
+          .then(() => this.refresh());
       });
     }
 
@@ -162,13 +163,14 @@ export class EisenhowerView extends ItemView {
     taskList.addEventListener("dragleave", () =>
       taskList.removeClass("drag-over"),
     );
-    taskList.addEventListener("drop", async (e: DragEvent) => {
+    taskList.addEventListener("drop", (e: DragEvent) => {
       e.preventDefault();
       taskList.removeClass("drag-over");
       const taskId = e.dataTransfer?.getData(DRAG_TASK_ID_KEY);
       if (!taskId) return;
-      await this.taskManager.moveTask(taskId, quadrant, section.name);
-      this.refresh();
+      void this.taskManager
+        .moveTask(taskId, quadrant, section.name)
+        .then(() => this.refresh());
     });
 
     for (const task of tasks) {
@@ -207,10 +209,9 @@ export class EisenhowerView extends ItemView {
       this.startInlineTaskEdit(taskEl, textSpan, task);
     });
 
-    checkbox.addEventListener("change", async () => {
+    checkbox.addEventListener("change", () => {
       if (checkbox.checked) {
-        await this.taskManager.completeTask(task.id);
-        this.refresh();
+        void this.taskManager.completeTask(task.id).then(() => this.refresh());
       }
     });
   }
@@ -221,7 +222,7 @@ export class EisenhowerView extends ItemView {
     task: Task,
   ): void {
     taskEl.draggable = false;
-    textSpan.style.display = "none";
+    textSpan.hide();
 
     const input = taskEl.createEl("input", {
       type: "text",
@@ -273,12 +274,12 @@ export class EisenhowerView extends ItemView {
   private renderTaskText(container: HTMLElement, text: string): void {
     const wikiLinkRegex = /\[\[([^\]]+)\]\]/g;
     let lastIndex = 0;
-    let match;
+    let match: RegExpExecArray | null;
     while ((match = wikiLinkRegex.exec(text)) !== null) {
       if (match.index > lastIndex) {
         container.appendText(text.slice(lastIndex, match.index));
       }
-      const inner = match[1];
+      const inner = match[1] ?? "";
       const pipeIdx = inner.indexOf("|");
       const target = pipeIdx >= 0 ? inner.slice(0, pipeIdx) : inner;
       const display = pipeIdx >= 0 ? inner.slice(pipeIdx + 1) : inner;
@@ -290,9 +291,9 @@ export class EisenhowerView extends ItemView {
       link.addEventListener("click", (e: MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        this.app.workspace.openLinkText(target, "", false);
+        void this.app.workspace.openLinkText(target, "", false);
       });
-      lastIndex = match.index + match[0].length;
+      lastIndex = match.index + (match[0]?.length ?? 0);
     }
     if (lastIndex < text.length) {
       container.appendText(text.slice(lastIndex));
@@ -318,7 +319,9 @@ export class EisenhowerView extends ItemView {
       this.refresh();
     };
 
-    addBtn.addEventListener("click", submit);
+    addBtn.addEventListener("click", () => {
+      void submit();
+    });
     input.addEventListener("keydown", (e: KeyboardEvent) => {
       if (e.key === "Enter") {
         e.preventDefault();
@@ -358,7 +361,9 @@ export class EisenhowerView extends ItemView {
       this.refresh();
     };
 
-    addBtn.addEventListener("click", submit);
+    addBtn.addEventListener("click", () => {
+      void submit();
+    });
     input.addEventListener("keydown", (e: KeyboardEvent) => {
       if (e.key === "Enter") {
         e.preventDefault();
@@ -393,7 +398,7 @@ export class EisenhowerView extends ItemView {
     section: SectionDef,
   ): void {
     const originalName = section.name;
-    nameSpan.style.display = "none";
+    nameSpan.hide();
 
     const input = headerRow.createEl("input", {
       type: "text",

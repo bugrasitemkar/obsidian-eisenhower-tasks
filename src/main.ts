@@ -19,8 +19,8 @@ export default class EisenhowerTasksPlugin extends Plugin {
     });
 
     this.addCommand({
-      id: "open-eisenhower-tasks",
-      name: "Open Eisenhower Tasks",
+      id: "open",
+      name: "Open",
       callback: () => {
         void this.activateView();
       },
@@ -37,20 +37,16 @@ export default class EisenhowerTasksPlugin extends Plugin {
     this.addSettingTab(new EisenhowerSettingTab(this.app, this));
   }
 
-  async onunload(): Promise<void> {
-    this.app.workspace.detachLeavesOfType(VIEW_TYPE_EISENHOWER);
-  }
-
   async activateView(): Promise<void> {
     const { workspace } = this.app;
     const leaves = workspace.getLeavesOfType(VIEW_TYPE_EISENHOWER);
     if (leaves.length > 0) {
-      workspace.revealLeaf(leaves[0]);
+      void workspace.revealLeaf(leaves[0]);
       return;
     }
     const leaf = workspace.getLeaf("tab");
     await leaf.setViewState({ type: VIEW_TYPE_EISENHOWER, active: true });
-    workspace.revealLeaf(leaf);
+    void workspace.revealLeaf(leaf);
   }
 }
 
@@ -65,7 +61,7 @@ class EisenhowerSettingTab extends PluginSettingTab {
   display(): void {
     const { containerEl } = this;
     containerEl.empty();
-    containerEl.createEl("h2", { text: "Eisenhower Tasks" });
+    new Setting(containerEl).setName("Eisenhower Tasks").setHeading();
 
     new Setting(containerEl)
       .setName("Auto-tag on move")
