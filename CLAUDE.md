@@ -22,7 +22,7 @@ Copy-Item main.js, manifest.json, styles.css `
   -Destination "C:\Vaults\Primary\.obsidian\plugins\eisenhower-tasks\"
 ```
 
-Then in Obsidian: Settings → Community Plugins → reload plugin list → enable *Eisenhower Tasks*, or use the *Hot Reload* community plugin.
+Then in Obsidian: Settings → Community Plugins → reload plugin list → enable _Eisenhower Tasks_, or use the _Hot Reload_ community plugin.
 
 ## Hard Rules
 
@@ -44,6 +44,7 @@ Then in Obsidian: Settings → Community Plugins → reload plugin list → enab
 ## Community Plugin Submission
 
 After first release is live on GitHub:
+
 1. Fork `obsidianmd/obsidian-releases`
 2. Add to `community-plugins.json` (alphabetically by id):
    ```json
@@ -68,9 +69,9 @@ After first release is live on GitHub:
 
 ## Quadrant Layout
 
-| Key | Grid Area | Position | Label |
-|-----|-----------|----------|-------|
-| q1  | 1/1       | Top-Left | Urgent & Important |
-| q2  | 1/2       | Top-Right | Urgent & Non-Important |
-| q3  | 2/2       | Bottom-Right | Non-Urgent & Important |
-| q4  | 2/1       | Bottom-Left | Non-Urgent & Non-Important |
+| Key | Grid Area | Position     | Label                      |
+| --- | --------- | ------------ | -------------------------- |
+| q1  | 1/1       | Top-Left     | Urgent & Important         |
+| q2  | 1/2       | Top-Right    | Urgent & Non-Important     |
+| q3  | 2/2       | Bottom-Right | Non-Urgent & Important     |
+| q4  | 2/1       | Bottom-Left  | Non-Urgent & Non-Important |

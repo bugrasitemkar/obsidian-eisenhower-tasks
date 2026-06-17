@@ -204,6 +204,11 @@ export class EisenhowerView extends ItemView {
     const textSpan = textRow.createEl("span", { cls: "eisenhower-task-text" });
     this.renderTaskText(textSpan, task.text);
 
+    const date = this.taskManager.extractDate(task.text);
+    if (date) {
+      textRow.createEl("span", { cls: "eisenhower-task-date", text: date });
+    }
+
     textSpan.addEventListener("dblclick", (e: MouseEvent) => {
       e.stopPropagation();
       this.startInlineTaskEdit(taskEl, textSpan, task);
@@ -252,6 +257,7 @@ export class EisenhowerView extends ItemView {
 
     input.addEventListener("blur", () => {
       if (this.filePickerOpen) return;
+      if (document.querySelector(".eisenhower-date-picker-popup")) return;
       void commit();
     });
     input.addEventListener("keydown", (e: KeyboardEvent) => {
@@ -267,6 +273,9 @@ export class EisenhowerView extends ItemView {
     input.addEventListener("input", () => {
       if (input.value.endsWith("[[")) {
         this.showFilePicker(input);
+      }
+      if (input.value.endsWith("@")) {
+        this.showDatePicker(input);
       }
     });
   }
@@ -332,6 +341,9 @@ export class EisenhowerView extends ItemView {
       if (input.value.endsWith("[[")) {
         this.showFilePicker(input);
       }
+      if (input.value.endsWith("@")) {
+        this.showDatePicker(input);
+      }
     });
   }
 
@@ -370,6 +382,48 @@ export class EisenhowerView extends ItemView {
         void submit();
       }
     });
+  }
+
+  private showDatePicker(targetInput: HTMLInputElement): void {
+    const existing = document.querySelector(".eisenhower-date-picker-popup");
+    if (existing) existing.remove();
+
+    const popup = document.body.createDiv({
+      cls: "eisenhower-date-picker-popup",
+    });
+    const dateInput = popup.createEl("input", { type: "date" });
+
+    const rect = targetInput.getBoundingClientRect();
+    popup.style.top = `${rect.bottom + 4}px`;
+    popup.style.left = `${rect.left}px`;
+
+    const insert = (value: string) => {
+      const cur = targetInput.value;
+      const base = cur.endsWith("@") ? cur.slice(0, -1) : cur;
+      targetInput.value = `${base.trimEnd()} @${value}`.trimStart();
+      popup.remove();
+      targetInput.focus();
+    };
+
+    dateInput.addEventListener("change", () => {
+      if (dateInput.value) insert(dateInput.value);
+    });
+
+    dateInput.addEventListener("keydown", (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        popup.remove();
+        targetInput.focus();
+      }
+    });
+
+    dateInput.addEventListener("blur", () => {
+      setTimeout(() => {
+        if (!popup.isConnected) return;
+        if (!popup.contains(document.activeElement)) popup.remove();
+      }, 300);
+    });
+
+    setTimeout(() => dateInput.focus(), 10);
   }
 
   private showFilePicker(targetInput: HTMLInputElement): void {

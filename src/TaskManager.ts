@@ -71,6 +71,11 @@ export class TaskManager {
     return task;
   }
 
+  extractDate(text: string): string | null {
+    const match = text.match(/@(\d{4}-\d{2}-\d{2})/);
+    return match ? (match[1] ?? null) : null;
+  }
+
   async updateTaskText(taskId: string, newText: string): Promise<void> {
     const task = this.data.tasks.find((t) => t.id === taskId);
     if (!task || !newText.trim()) return;

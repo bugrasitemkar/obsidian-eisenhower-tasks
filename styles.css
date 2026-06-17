@@ -1,349 +1,365 @@
 /* ── Container ── */
 .eisenhower-view {
-	height: 100%;
-	display: flex;
-	flex-direction: column;
-	overflow: hidden;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 /* ── 2×2 Grid ── */
 .eisenhower-grid {
-	display: grid;
-	grid-template-columns: 1fr 1fr;
-	grid-template-rows: 1fr 1fr;
-	gap: 8px;
-	flex: 1;
-	padding: 8px;
-	min-height: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 8px;
+  flex: 1;
+  padding: 8px;
+  min-height: 0;
 }
 
 /* Clockwise from TL: q1 TL, q2 TR, q3 BR, q4 BL */
-.eisenhower-q1 { grid-area: 1 / 1; }
-.eisenhower-q2 { grid-area: 1 / 2; }
-.eisenhower-q3 { grid-area: 2 / 2; }
-.eisenhower-q4 { grid-area: 2 / 1; }
+.eisenhower-q1 {
+  grid-area: 1 / 1;
+}
+.eisenhower-q2 {
+  grid-area: 1 / 2;
+}
+.eisenhower-q3 {
+  grid-area: 2 / 2;
+}
+.eisenhower-q4 {
+  grid-area: 2 / 1;
+}
 
 /* ── Fullscreen ── */
 .eisenhower-grid.has-fullscreen .eisenhower-quadrant {
-	display: none;
+  display: none;
 }
 .eisenhower-grid.has-fullscreen .eisenhower-quadrant.is-fullscreen {
-	display: flex;
-	grid-area: 1 / 1 / 3 / 3;
+  display: flex;
+  grid-area: 1 / 1 / 3 / 3;
 }
 
 /* ── Quadrant Panel ── */
 .eisenhower-quadrant {
-	border: 1px solid var(--background-modifier-border);
-	border-radius: var(--radius-m);
-	display: flex;
-	flex-direction: column;
-	overflow: hidden;
-	background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--background-primary);
 }
 
 /* ── Quadrant Header ── */
 .eisenhower-quadrant-header {
-	display: flex;
-	align-items: center;
-	padding: 8px 12px;
-	background: var(--background-secondary);
-	border-bottom: 1px solid var(--background-modifier-border);
-	flex-shrink: 0;
-	gap: 6px;
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  background: var(--background-secondary);
+  border-bottom: 1px solid var(--background-modifier-border);
+  flex-shrink: 0;
+  gap: 6px;
 }
 
 .eisenhower-quadrant-header-text {
-	flex: 1;
+  flex: 1;
 }
 
 .eisenhower-quadrant-title {
-	font-weight: 700;
-	font-size: var(--font-ui-medium);
-	line-height: 1.3;
+  font-weight: 700;
+  font-size: var(--font-ui-medium);
+  line-height: 1.3;
 }
 
 .eisenhower-quadrant-subtitle {
-	font-size: var(--font-ui-smaller);
-	color: var(--text-muted);
-	margin-top: 1px;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  margin-top: 1px;
 }
 
 /* Color-coded left border */
-.eisenhower-q1 .eisenhower-quadrant-header { border-left: 4px solid var(--color-red); }
-.eisenhower-q2 .eisenhower-quadrant-header { border-left: 4px solid var(--color-orange); }
-.eisenhower-q3 .eisenhower-quadrant-header { border-left: 4px solid var(--color-blue); }
-.eisenhower-q4 .eisenhower-quadrant-header { border-left: 4px solid var(--text-faint); }
+.eisenhower-q1 .eisenhower-quadrant-header {
+  border-left: 4px solid var(--color-red);
+}
+.eisenhower-q2 .eisenhower-quadrant-header {
+  border-left: 4px solid var(--color-orange);
+}
+.eisenhower-q3 .eisenhower-quadrant-header {
+  border-left: 4px solid var(--color-blue);
+}
+.eisenhower-q4 .eisenhower-quadrant-header {
+  border-left: 4px solid var(--text-faint);
+}
 
 /* ── Add Section row (below header) ── */
 .eisenhower-add-section {
-	display: flex;
-	gap: 4px;
-	align-items: center;
-	padding: 5px 10px;
-	border-bottom: 1px solid var(--background-modifier-border);
-	background: var(--background-secondary);
-	flex-shrink: 0;
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  padding: 5px 10px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+  flex-shrink: 0;
 }
 
 .eisenhower-add-section-input {
-	flex: 1;
-	font-size: var(--font-ui-smaller);
-	padding: 2px 6px;
-	border: 1px solid var(--background-modifier-border);
-	border-radius: var(--radius-s);
-	background: var(--background-primary);
-	color: var(--text-normal);
+  flex: 1;
+  font-size: var(--font-ui-smaller);
+  padding: 2px 6px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  background: var(--background-primary);
+  color: var(--text-normal);
 }
 
 .eisenhower-add-section-input:focus {
-	border-color: var(--interactive-accent);
-	outline: none;
+  border-color: var(--interactive-accent);
+  outline: none;
 }
 
 /* ── Sections Scroll Area ── */
 .eisenhower-sections-container {
-	overflow-y: auto;
-	flex: 1;
-	padding: 6px 10px;
+  overflow-y: auto;
+  flex: 1;
+  padding: 6px 10px;
 }
 
 /* ── Section ── */
 .eisenhower-section {
-	margin-bottom: 10px;
+  margin-bottom: 10px;
 }
 
 .eisenhower-section-header {
-	display: flex;
-	align-items: center;
-	gap: 4px;
-	margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 4px;
 }
 
 .eisenhower-section-name {
-	font-size: var(--font-ui-smaller);
-	font-weight: 600;
-	color: var(--text-muted);
-	text-transform: uppercase;
-	letter-spacing: 0.05em;
-	flex: 1;
+  font-size: var(--font-ui-smaller);
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  flex: 1;
 }
 
 .eisenhower-rename-input {
-	font-size: var(--font-ui-smaller);
-	font-weight: 600;
-	flex: 1;
-	padding: 1px 4px;
-	border: 1px solid var(--interactive-accent);
-	border-radius: var(--radius-s);
-	background: var(--background-primary);
-	color: var(--text-normal);
+  font-size: var(--font-ui-smaller);
+  font-weight: 600;
+  flex: 1;
+  padding: 1px 4px;
+  border: 1px solid var(--interactive-accent);
+  border-radius: var(--radius-s);
+  background: var(--background-primary);
+  color: var(--text-normal);
 }
 
 /* ── Icon Buttons ── */
 .eisenhower-icon-btn {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	width: 20px;
-	height: 20px;
-	padding: 0;
-	border: none;
-	background: transparent;
-	color: var(--text-faint);
-	cursor: pointer;
-	border-radius: var(--radius-s);
-	flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-faint);
+  cursor: pointer;
+  border-radius: var(--radius-s);
+  flex-shrink: 0;
 }
 
 .eisenhower-icon-btn:hover {
-	color: var(--text-normal);
-	background: var(--background-modifier-hover);
+  color: var(--text-normal);
+  background: var(--background-modifier-hover);
 }
 
 .eisenhower-delete-btn:hover {
-	color: var(--text-error);
+  color: var(--text-error);
 }
 
 /* ── Task list / drop zone ── */
 .eisenhower-task-list {
-	display: flex;
-	flex-direction: column;
-	gap: 2px;
-	margin-bottom: 4px;
-	min-height: 24px;
-	border-radius: var(--radius-s);
-	transition: background 0.1s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 4px;
+  min-height: 24px;
+  border-radius: var(--radius-s);
+  transition: background 0.1s ease;
 }
 
 .eisenhower-task-list.drag-over {
-	background: var(--background-modifier-hover);
-	outline: 2px dashed var(--interactive-accent);
-	outline-offset: -2px;
+  background: var(--background-modifier-hover);
+  outline: 2px dashed var(--interactive-accent);
+  outline-offset: -2px;
 }
 
 /* ── Tasks ── */
 .eisenhower-task {
-	display: flex;
-	align-items: center;
-	gap: 6px;
-	padding: 3px 4px;
-	border-radius: var(--radius-s);
-	cursor: grab;
-	user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 4px;
+  border-radius: var(--radius-s);
+  cursor: grab;
+  user-select: none;
 }
 
 .eisenhower-task:hover {
-	background: var(--background-modifier-hover);
+  background: var(--background-modifier-hover);
 }
 
 .eisenhower-task.is-dragging {
-	opacity: 0.4;
-	cursor: grabbing;
+  opacity: 0.4;
+  cursor: grabbing;
 }
 
 .eisenhower-task-checkbox {
-	flex-shrink: 0;
-	cursor: pointer;
+  flex-shrink: 0;
+  cursor: pointer;
 }
 
 .eisenhower-task-body {
-	display: flex;
-	flex-direction: column;
-	flex: 1;
-	min-width: 0;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
 }
 
 .eisenhower-task-text {
-	font-size: var(--font-ui-small);
-	color: var(--text-normal);
-	line-height: 1.4;
-	word-break: break-word;
-	flex: 1;
-	cursor: text;
+  font-size: var(--font-ui-small);
+  color: var(--text-normal);
+  line-height: 1.4;
+  word-break: break-word;
+  flex: 1;
+  cursor: text;
 }
 
 .eisenhower-task-text .eisenhower-wiki-link {
-	color: var(--link-color);
-	text-decoration: none;
-	cursor: pointer;
+  color: var(--link-color);
+  text-decoration: none;
+  cursor: pointer;
 }
 .eisenhower-task-text .eisenhower-wiki-link:hover {
-	text-decoration: underline;
+  text-decoration: underline;
 }
 
 .eisenhower-task-edit-input {
-	flex: 1;
-	font-size: var(--font-ui-small);
-	padding: 1px 4px;
-	border: 1px solid var(--interactive-accent);
-	border-radius: var(--radius-s);
-	background: var(--background-primary);
-	color: var(--text-normal);
+  flex: 1;
+  font-size: var(--font-ui-small);
+  padding: 1px 4px;
+  border: 1px solid var(--interactive-accent);
+  border-radius: var(--radius-s);
+  background: var(--background-primary);
+  color: var(--text-normal);
 }
 
 .eisenhower-task-date {
-	font-size: var(--font-ui-smaller);
-	color: var(--text-accent);
-	margin-top: 1px;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-accent);
+  margin-top: 1px;
 }
 
 /* ── Add Task row (bottom of quadrant) ── */
 .eisenhower-add-task {
-	display: flex;
-	gap: 4px;
-	align-items: center;
-	padding: 6px 10px;
-	border-top: 1px solid var(--background-modifier-border);
-	flex-shrink: 0;
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  padding: 6px 10px;
+  border-top: 1px solid var(--background-modifier-border);
+  flex-shrink: 0;
 }
 
 .eisenhower-add-task-input {
-	flex: 1;
-	font-size: var(--font-ui-small);
-	padding: 3px 6px;
-	border: 1px solid var(--background-modifier-border);
-	border-radius: var(--radius-s);
-	background: var(--background-primary);
-	color: var(--text-normal);
+  flex: 1;
+  font-size: var(--font-ui-small);
+  padding: 3px 6px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  background: var(--background-primary);
+  color: var(--text-normal);
 }
 
 .eisenhower-add-task-input:focus {
-	border-color: var(--interactive-accent);
-	outline: none;
+  border-color: var(--interactive-accent);
+  outline: none;
 }
 
 /* ── Shared Button ── */
 .eisenhower-add-btn {
-	font-size: var(--font-ui-smaller);
-	padding: 3px 8px;
-	border: 1px solid var(--background-modifier-border);
-	border-radius: var(--radius-s);
-	background: var(--interactive-normal);
-	color: var(--text-normal);
-	cursor: pointer;
-	white-space: nowrap;
-	flex-shrink: 0;
+  font-size: var(--font-ui-smaller);
+  padding: 3px 8px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  background: var(--interactive-normal);
+  color: var(--text-normal);
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .eisenhower-add-btn:hover {
-	background: var(--interactive-hover);
+  background: var(--interactive-hover);
 }
 
 /* ── Date picker popup ── */
 .eisenhower-date-picker-popup {
-	position: fixed;
-	z-index: 1000;
-	background: var(--background-primary);
-	border: 1px solid var(--background-modifier-border);
-	border-radius: var(--radius-m);
-	padding: 6px;
-	box-shadow: var(--shadow-l);
+  position: fixed;
+  z-index: 1000;
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  padding: 6px;
+  box-shadow: var(--shadow-l);
 }
 
 .eisenhower-date-picker-popup input[type="date"] {
-	background: var(--background-primary);
-	color: var(--text-normal);
-	border: 1px solid var(--background-modifier-border);
-	border-radius: var(--radius-s);
-	padding: 4px 6px;
-	font-size: var(--font-ui-small);
+  background: var(--background-primary);
+  color: var(--text-normal);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  padding: 4px 6px;
+  font-size: var(--font-ui-small);
 }
 
 /* ── Subtasks ── */
 .eisenhower-task[data-depth="1"] {
-	margin-left: 16px;
+  margin-left: 16px;
 }
 
 .eisenhower-task[data-depth="2"] {
-	margin-left: 32px;
+  margin-left: 32px;
 }
 
 .eisenhower-subtask-list {
-	display: flex;
-	flex-direction: column;
-	width: 100%;
-	gap: 1px;
-	margin-top: 2px;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: 1px;
+  margin-top: 2px;
 }
 
 .eisenhower-task.drop-target {
-	outline: 2px dashed var(--interactive-accent);
-	outline-offset: -1px;
-	border-radius: var(--radius-s);
+  outline: 2px dashed var(--interactive-accent);
+  outline-offset: -1px;
+  border-radius: var(--radius-s);
 }
 
 .eisenhower-task.drop-target-blocked {
-	outline: 2px dashed var(--color-red);
-	outline-offset: -1px;
+  outline: 2px dashed var(--color-red);
+  outline-offset: -1px;
 }
 
 .eisenhower-task-delete {
-	opacity: 0;
-	transition: opacity 0.1s ease;
-	flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.1s ease;
+  flex-shrink: 0;
 }
 
 .eisenhower-task:hover .eisenhower-task-delete {
-	opacity: 1;
+  opacity: 1;
 }
